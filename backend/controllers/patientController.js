@@ -1,0 +1,308 @@
+import Patient from '../models/Patient.js';
+import Appointment from '../models/Appointment.js';
+import Prescription from '../models/Prescription.js';
+import LabTest from '../models/LabTest.js';
+import Billing from '../models/Billing.js';
+import Doctor from '../models/Doctor.js';
+import Department from '../models/Department.js';
+import { generateAppointmentId } from '../utils/idGenerator.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+
+// @desc    Get patient dashboard
+// @route   GET /api/patients/dashboard
+// @access  Private (Patient)
+export const getPatientDashboard = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id })
+    .populate('user');
+
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient profile not found'
+    });
+  }
+
+  // Get all appointments for this patient
+  const allAppointments = await Appointment.find({
+    patient: patient._id
+  })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .populate('department')
+    .lean();
+
+  // Filter upcoming appointments in JavaScript to avoid date comparison issues
+  const now = new Date();
+  const upcomingAppointments = allAppointments
+    .filter(apt => {
+      if (!apt.appointmentDate) return false;
+      const aptDate = new Date(apt.appointmentDate);
+      return aptDate >= now && ['scheduled', 'confirmed'].includes(apt.status);
+    })
+    .sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate))
+    .slice(0, 5);
+
+  const recentPrescriptions = await Prescription.find({ patient: patient._id })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .sort({ createdAt: -1 })
+    .limit(5);
+
+  const pendingBills = await Billing.find({
+    patient: patient._id,
+    paymentStatus: { $in: ['pending', 'partial'] }
+  }).sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    data: {
+      patient,
+      upcomingAppointments,
+      recentPrescriptions,
+      pendingBills
+    }
+  });
+});
+
+// @desc    Book appointment
+// @route   POST /api/patients/appointments
+// @access  Private (Patient)
+export const bookAppointment = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id });
+  
+  const { doctor, department, appointmentDate, appointmentTime, type, symptoms, notes } = req.body;
+
+  // Check if doctor exists
+  const doctorData = await Doctor.findById(doctor).populate('user');
+  if (!doctorData) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor not found'
+    });
+  }
+
+  // Check if slot is available
+  const existingAppointment = await Appointment.findOne({
+    doctor,
+    appointmentDate: new Date(appointmentDate),
+    appointmentTime,
+    status: { $ne: 'cancelled' }
+  });
+
+  if (existingAppointment) {
+    return res.status(400).json({
+      success: false,
+      message: 'This slot is already booked'
+    });
+  }
+
+  const appointment = await Appointment.create({
+    appointmentId: generateAppointmentId(),
+    patient: patient._id,
+    doctor,
+    department,
+    appointmentDate: new Date(appointmentDate),
+    appointmentTime,
+    type: type || 'consultation',
+    symptoms,
+    notes,
+    consultationFee: doctorData.consultationFee,
+    status: 'scheduled'
+  });
+
+  patient.appointments.push(appointment._id);
+  patient.totalVisits += 1;
+  await patient.save();
+
+  res.status(201).json({
+    success: true,
+    message: 'Appointment booked successfully',
+    data: appointment
+  });
+});
+
+// @desc    Get all appointments
+// @route   GET /api/patients/appointments
+// @access  Private (Patient)
+export const getMyAppointments = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id });
+  
+  const { status, upcoming } = req.query;
+  
+  const query = { patient: patient._id };
+  
+  if (status) query.status = status;
+
+  let appointments = await Appointment.find(query)
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .populate('department')
+    .lean();
+
+  // Filter in JavaScript if upcoming is requested
+  if (upcoming === 'true') {
+    const now = new Date();
+    appointments = appointments.filter(apt => {
+      if (!apt.appointmentDate) return false;
+      return new Date(apt.appointmentDate) >= now;
+    });
+  }
+
+  // Sort by date
+  appointments.sort((a, b) => {
+    const dateA = a.appointmentDate ? new Date(a.appointmentDate) : new Date(0);
+    const dateB = b.appointmentDate ? new Date(b.appointmentDate) : new Date(0);
+    return dateB - dateA;
+  });
+
+  res.status(200).json({
+    success: true,
+    count: appointments.length,
+    data: appointments
+  });
+});
+
+// @desc    Cancel appointment
+// @route   DELETE /api/patients/appointments/:id
+// @access  Private (Patient)
+export const cancelAppointment = asyncHandler(async (req, res) => {
+  const appointment = await Appointment.findById(req.params.id);
+
+  if (!appointment) {
+    return res.status(404).json({
+      success: false,
+      message: 'Appointment not found'
+    });
+  }
+
+  const patient = await Patient.findOne({ user: req.user._id });
+  if (appointment.patient.toString() !== patient._id.toString()) {
+    return res.status(403).json({
+      success: false,
+      message: 'You can only cancel your own appointments'
+    });
+  }
+
+  appointment.status = 'cancelled';
+  appointment.cancelledBy = req.user._id;
+  appointment.cancelledAt = new Date();
+  appointment.cancelReason = req.body.reason || 'Cancelled by patient';
+  
+  await appointment.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Appointment cancelled successfully'
+  });
+});
+
+// @desc    Get medical history
+// @route   GET /api/patients/medical-history
+// @access  Private (Patient)
+export const getMedicalHistory = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id })
+    .populate('prescriptions')
+    .populate('labReports')
+    .populate({
+      path: 'appointments',
+      populate: { path: 'doctor', populate: 'user' }
+    });
+
+  res.status(200).json({
+    success: true,
+    data: {
+      medicalHistory: patient.medicalHistory,
+      allergies: patient.allergies,
+      chronicDiseases: patient.chronicDiseases,
+      surgeries: patient.surgeries,
+      vaccinations: patient.vaccinations,
+      prescriptions: patient.prescriptions,
+      labReports: patient.labReports,
+      appointments: patient.appointments
+    }
+  });
+});
+
+// @desc    Get billing history
+// @route   GET /api/patients/billing
+// @access  Private (Patient)
+export const getBillingHistory = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id });
+  
+  const bills = await Billing.find({ patient: patient._id })
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: bills.length,
+    data: bills
+  });
+});
+
+// @desc    Update profile
+// @route   PUT /api/patients/profile
+// @access  Private (Patient)
+export const updateProfile = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id });
+
+  const allowedUpdates = ['emergencyContact', 'familyMembers', 'height', 'weight', 'insurance'];
+  
+  allowedUpdates.forEach(field => {
+    if (req.body[field]) {
+      patient[field] = req.body[field];
+    }
+  });
+
+  await patient.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile updated successfully',
+    data: patient
+  });
+});
+
+// @desc    Get all departments
+// @route   GET /api/patients/departments
+// @access  Private (Patient)
+export const getDepartments = asyncHandler(async (req, res) => {
+  const departments = await Department.find({ isActive: true })
+    .select('name description')
+    .sort({ name: 1 });
+
+  res.status(200).json({
+    success: true,
+    count: departments.length,
+    data: departments
+  });
+});
+
+// @desc    Get doctors by department
+// @route   GET /api/patients/doctors
+// @access  Private (Patient)
+export const getDoctorsByDepartment = asyncHandler(async (req, res) => {
+  const { department } = req.query;
+  
+  const query = { isAvailable: true };
+  if (department) {
+    query.department = department;
+  }
+
+  const doctors = await Doctor.find(query)
+    .populate('user', 'firstName lastName')
+    .populate('department', 'name')
+    .select('specialization consultationFee')
+    .sort({ 'user.firstName': 1 });
+
+  res.status(200).json({
+    success: true,
+    count: doctors.length,
+    data: doctors
+  });
+});
