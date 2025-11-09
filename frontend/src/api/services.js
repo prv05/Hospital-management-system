@@ -14,6 +14,7 @@ export const doctorAPI = {
   getDashboard: () => api.get('/doctors/dashboard'),
   getAppointments: (params) => api.get('/doctors/appointments', { params }),
   getQueue: () => api.get('/doctors/queue'),
+  getPatients: () => api.get('/doctors/patients'),
   searchPatients: (query) => api.get('/doctors/patients/search', { params: { query } }),
   getPatientDetails: (id) => api.get(`/doctors/patients/${id}`),
   updateConsultation: (id, data) => api.put(`/doctors/appointments/${id}/consultation`, data),
@@ -99,6 +100,7 @@ export const adminAPI = {
   updateBed: (id, data) => api.put(`/admin/beds/${id}`, data),
   deleteBed: (id) => api.delete(`/admin/beds/${id}`),
   getAnalytics: (period) => api.get('/admin/analytics', { params: { period } }),
+  getAllAppointments: () => api.get('/admin/appointments'),
 };
 
 // Department APIs

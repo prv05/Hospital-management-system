@@ -106,15 +106,30 @@ export const getDoctorAppointments = asyncHandler(async (req, res) => {
   const appointments = await Appointment.find(query)
     .populate({
       path: 'patient',
-      populate: { path: 'user' }
+      populate: { path: 'user', select: 'firstName lastName email phone' }
     })
-    .sort({ appointmentDate: -1, appointmentTime: 1 })
-    .limit(parseInt(limit));
+    .limit(parseInt(limit))
+    .lean();
+
+  // Sort manually to handle undefined dates
+  const sortedAppointments = appointments.sort((a, b) => {
+    const dateA = a.appointmentDate ? new Date(a.appointmentDate).getTime() : 0;
+    const dateB = b.appointmentDate ? new Date(b.appointmentDate).getTime() : 0;
+    
+    if (dateB !== dateA) {
+      return dateB - dateA; // Sort by date descending
+    }
+    
+    // If dates are equal, sort by time
+    const timeA = a.appointmentTime || '';
+    const timeB = b.appointmentTime || '';
+    return timeA.localeCompare(timeB); // Ascending time
+  });
 
   res.status(200).json({
     success: true,
-    count: appointments.length,
-    data: appointments
+    count: sortedAppointments.length,
+    data: sortedAppointments
   });
 });
 
@@ -129,27 +144,59 @@ export const getPatientQueue = asyncHandler(async (req, res) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  // Get all today's appointments
   const queue = await Appointment.find({
     doctor: doctor._id,
-    appointmentDate: { $gte: today, $lt: tomorrow },
-    status: { $in: ['confirmed', 'waiting', 'in-consultation'] }
+    appointmentDate: { $gte: today, $lt: tomorrow }
   })
     .populate({
       path: 'patient',
-      populate: { path: 'user' }
+      populate: { path: 'user', select: 'firstName lastName email phone' }
     })
-    .sort({ appointmentTime: 1 });
+    .sort({ appointmentTime: 1 })
+    .lean();
 
   // Categorize appointments
   const categorized = {
     waiting: queue.filter(apt => apt.status === 'waiting' || apt.status === 'confirmed'),
     inConsultation: queue.filter(apt => apt.status === 'in-consultation'),
-    completed: []
+    completed: queue.filter(apt => apt.status === 'completed')
   };
 
   res.status(200).json({
     success: true,
     data: categorized
+  });
+});
+
+// @desc    Get all patients for this doctor
+// @route   GET /api/doctors/patients
+// @access  Private (Doctor)
+export const getDoctorPatients = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  // Get unique patients who have appointments with this doctor
+  const appointments = await Appointment.find({ doctor: doctor._id })
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone dateOfBirth age' }
+    })
+    .select('patient');
+
+  // Extract unique patients
+  const patientMap = new Map();
+  appointments.forEach(apt => {
+    if (apt.patient && apt.patient._id) {
+      patientMap.set(apt.patient._id.toString(), apt.patient);
+    }
+  });
+
+  const patients = Array.from(patientMap.values());
+
+  res.status(200).json({
+    success: true,
+    count: patients.length,
+    data: patients
   });
 });
 
@@ -188,15 +235,7 @@ export const searchPatients = asyncHandler(async (req, res) => {
 export const getPatientDetails = asyncHandler(async (req, res) => {
   const patient = await Patient.findById(req.params.id)
     .populate('user')
-    .populate({
-      path: 'appointments',
-      populate: { path: 'doctor', populate: 'user' }
-    })
-    .populate({
-      path: 'prescriptions',
-      populate: { path: 'doctor', populate: 'user' }
-    })
-    .populate('labReports');
+    .lean();
 
   if (!patient) {
     return res.status(404).json({
@@ -205,9 +244,30 @@ export const getPatientDetails = asyncHandler(async (req, res) => {
     });
   }
 
+  // Get appointment count for this patient
+  const totalVisits = await Appointment.countDocuments({ 
+    patient: patient._id,
+    status: { $in: ['completed', 'in-consultation'] }
+  });
+
+  // Get recent appointments
+  const appointments = await Appointment.find({ patient: patient._id })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .populate('department', 'name')
+    .sort({ appointmentDate: -1 })
+    .limit(10)
+    .lean();
+
   res.status(200).json({
     success: true,
-    data: patient
+    data: {
+      ...patient,
+      totalVisits,
+      appointments
+    }
   });
 });
 

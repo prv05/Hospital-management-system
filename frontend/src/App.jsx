@@ -19,6 +19,7 @@ import LabDashboard from './pages/dashboards/LabDashboard';
 // Admin Pages
 import UsersManagement from './pages/admin/UsersManagement';
 import DepartmentsManagement from './pages/admin/DepartmentsManagement';
+import AppointmentsManagement from './pages/admin/AppointmentsManagement';
 import BedsManagement from './pages/admin/AdminAnalytics';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
 
@@ -234,6 +235,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <BedsManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/appointments"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AppointmentsManagement />
             </ProtectedRoute>
           }
         />

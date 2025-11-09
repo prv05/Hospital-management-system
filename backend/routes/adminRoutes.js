@@ -15,7 +15,8 @@ import {
   createBed,
   updateBed,
   deleteBed,
-  getSystemAnalytics
+  getAnalytics,
+  getAllAppointments
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -37,6 +38,7 @@ router.get('/beds', getAllBeds);
 router.post('/beds', createBed);
 router.put('/beds/:id', updateBed);
 router.delete('/beds/:id', deleteBed);
-router.get('/analytics', getSystemAnalytics);
+router.get('/appointments', getAllAppointments);
+router.get('/analytics', getAnalytics);
 
 export default router;

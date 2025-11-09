@@ -24,7 +24,9 @@ const AdminAnalytics = () => {
         totalDoctors: data.totalDoctors || 0,
         totalAppointments: data.totalAppointments || 0,
         revenueGrowth: data.revenueGrowth || 0,
-        patientGrowth: data.patientGrowth || 0
+        patientGrowth: data.patientGrowth || 0,
+        revenueByDepartment: data.revenueByDepartment || [],
+        monthlyPerformance: data.monthlyPerformance || []
       });
     } catch (error) {
       toast.error('Failed to fetch analytics');
@@ -86,31 +88,34 @@ const AdminAnalytics = () => {
                     Revenue by Department
                   </h2>
                   <div className="space-y-3">
-                    {[
-                      { name: 'OPD', amount: 80000, percentage: 32 },
-                      { name: 'IPD', amount: 120000, percentage: 48 },
-                      { name: 'Pharmacy', amount: 30000, percentage: 12 },
-                      { name: 'Lab', amount: 20000, percentage: 8 },
-                    ].map((item) => (
-                      <div key={item.name} className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              {item.name}
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              ₹{item.amount.toLocaleString()}
-                            </span>
+                    {analytics?.revenueByDepartment && analytics.revenueByDepartment.length > 0 ? (
+                      analytics.revenueByDepartment.map((item) => {
+                        const maxRevenue = analytics.revenueByDepartment[0]?.revenue || 1;
+                        const percentage = ((item.revenue / maxRevenue) * 100).toFixed(0);
+                        return (
+                          <div key={item._id || item.name} className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {item._id || 'Unknown'}
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  ₹{item.revenue.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-primary-600 h-2 rounded-full"
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-primary-600 h-2 rounded-full"
-                              style={{ width: `${item.percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No revenue data available</p>
+                    )}
                   </div>
                 </div>
 
@@ -119,26 +124,26 @@ const AdminAnalytics = () => {
                     Monthly Performance
                   </h2>
                   <div className="space-y-4">
-                    {[
-                      { month: 'January', revenue: 220000, patients: 145 },
-                      { month: 'February', revenue: 235000, patients: 152 },
-                      { month: 'March', revenue: 250000, patients: 168 },
-                    ].map((item) => (
-                      <div
-                        key={item.month}
-                        className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                      >
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {item.month}
-                        </span>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            ₹{item.revenue.toLocaleString()}
-                          </p>
-                          <p className="text-xs text-gray-500">{item.patients} patients</p>
+                    {analytics?.monthlyPerformance && analytics.monthlyPerformance.length > 0 ? (
+                      analytics.monthlyPerformance.map((item) => (
+                        <div
+                          key={`${item.month}-${item.year}`}
+                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                        >
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {item.month}
+                          </span>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                              ₹{item.revenue.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500">{item.patients} patients</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No performance data available</p>
+                    )}
                   </div>
                 </div>
               </div>

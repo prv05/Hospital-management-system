@@ -4,6 +4,7 @@ import {
   getDoctorDashboard,
   getDoctorAppointments,
   getPatientQueue,
+  getDoctorPatients,
   searchPatients,
   getPatientDetails,
   updateConsultationNotes,
@@ -24,6 +25,7 @@ router.use(authorize('doctor'));
 router.get('/dashboard', getDoctorDashboard);
 router.get('/appointments', getDoctorAppointments);
 router.get('/queue', getPatientQueue);
+router.get('/patients', getDoctorPatients);
 router.get('/patients/search', searchPatients);
 router.get('/patients/:id', getPatientDetails);
 router.put('/patients/:id/medical-history', updatePatientMedicalHistory);

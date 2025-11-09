@@ -33,6 +33,7 @@ const Sidebar = ({ role }) => {
       { name: 'Dashboard', path: '/admin/dashboard', icon: FiHome },
       { name: 'Users', path: '/admin/users', icon: FiUsers },
       { name: 'Departments', path: '/admin/departments', icon: FiActivity },
+      { name: 'Appointments', path: '/admin/appointments', icon: FiCalendar },
       { name: 'Beds', path: '/admin/beds', icon: FiPackage },
       { name: 'Analytics', path: '/admin/analytics', icon: FiFileText },
     ],

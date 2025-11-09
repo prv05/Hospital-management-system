@@ -64,6 +64,192 @@ export const getAdminDashboard = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get admin analytics
+// @route   GET /api/admin/analytics
+// @access  Private (Admin)
+export const getAnalytics = asyncHandler(async (req, res) => {
+  const { period = 'month' } = req.query;
+
+  // Calculate date range based on period
+  const now = new Date();
+  let startDate = new Date();
+  
+  switch (period) {
+    case 'week':
+      startDate.setDate(now.getDate() - 7);
+      break;
+    case 'month':
+      startDate.setMonth(now.getMonth() - 1);
+      break;
+    case 'year':
+      startDate.setFullYear(now.getFullYear() - 1);
+      break;
+    default:
+      startDate.setMonth(now.getMonth() - 1);
+  }
+
+  // Get current period stats
+  const totalPatients = await Patient.countDocuments();
+  const totalDoctors = await Doctor.countDocuments();
+  const totalAppointments = await Appointment.countDocuments({
+    createdAt: { $gte: startDate }
+  });
+
+  // Get previous period for comparison
+  const previousStartDate = new Date(startDate);
+  previousStartDate.setTime(startDate.getTime() - (now.getTime() - startDate.getTime()));
+  
+  const previousPatients = await Patient.countDocuments({
+    createdAt: { $lt: startDate, $gte: previousStartDate }
+  });
+
+  // Calculate total revenue
+  const revenueData = await Billing.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$amountPaid' }
+      }
+    }
+  ]);
+
+  const previousRevenueData = await Billing.aggregate([
+    {
+      $match: {
+        createdAt: { $lt: startDate, $gte: previousStartDate }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$amountPaid' }
+      }
+    }
+  ]);
+
+  const totalRevenue = revenueData[0]?.total || 0;
+  const previousRevenue = previousRevenueData[0]?.total || 0;
+
+  // Calculate growth percentages
+  const patientGrowth = previousPatients > 0 
+    ? (((totalPatients - previousPatients) / previousPatients) * 100).toFixed(1)
+    : 0;
+  
+  const revenueGrowth = previousRevenue > 0
+    ? (((totalRevenue - previousRevenue) / previousRevenue) * 100).toFixed(1)
+    : 0;
+
+  // Get revenue by department
+  const revenueByDepartment = await Billing.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate }
+      }
+    },
+    {
+      $lookup: {
+        from: 'appointments',
+        localField: 'appointment',
+        foreignField: '_id',
+        as: 'appointmentData'
+      }
+    },
+    {
+      $unwind: {
+        path: '$appointmentData',
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $lookup: {
+        from: 'doctors',
+        localField: 'appointmentData.doctor',
+        foreignField: '_id',
+        as: 'doctorData'
+      }
+    },
+    {
+      $unwind: {
+        path: '$doctorData',
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $lookup: {
+        from: 'departments',
+        localField: 'doctorData.department',
+        foreignField: '_id',
+        as: 'departmentData'
+      }
+    },
+    {
+      $unwind: {
+        path: '$departmentData',
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $group: {
+        _id: '$departmentData.name',
+        revenue: { $sum: '$amountPaid' }
+      }
+    },
+    {
+      $sort: { revenue: -1 }
+    }
+  ]);
+
+  // Get monthly performance (last 6 months)
+  const monthlyPerformance = await Billing.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' }
+        },
+        revenue: { $sum: '$amountPaid' },
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { '_id.year': 1, '_id.month': 1 }
+    }
+  ]);
+
+  // Format monthly performance
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const formattedMonthly = monthlyPerformance.map(item => ({
+    month: months[item._id.month - 1],
+    year: item._id.year,
+    revenue: item.revenue,
+    patients: item.count
+  }));
+
+  res.status(200).json({
+    success: true,
+    data: {
+      totalRevenue,
+      totalPatients,
+      totalDoctors,
+      totalAppointments,
+      revenueGrowth: parseFloat(revenueGrowth),
+      patientGrowth: parseFloat(patientGrowth),
+      revenueByDepartment,
+      monthlyPerformance: formattedMonthly
+    }
+  });
+});
+
 // @desc    Get all users
 // @route   GET /api/admin/users
 // @access  Private (Admin)
@@ -373,6 +559,51 @@ export const deleteBed = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Bed deleted successfully'
+  });
+});
+
+// @desc    Get all appointments
+// @route   GET /api/admin/appointments
+// @access  Private (Admin)
+export const getAllAppointments = asyncHandler(async (req, res) => {
+  const appointments = await Appointment.find()
+    .populate({
+      path: 'patient',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email phone'
+      }
+    })
+    .populate({
+      path: 'doctor',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email phone'
+      },
+      select: 'specialization qualification department'
+    })
+    .populate('department', 'name code')
+    .lean();
+
+  // Sort manually to handle undefined dates
+  const sortedAppointments = appointments.sort((a, b) => {
+    const dateA = a.appointmentDate ? new Date(a.appointmentDate).getTime() : 0;
+    const dateB = b.appointmentDate ? new Date(b.appointmentDate).getTime() : 0;
+    
+    if (dateB !== dateA) {
+      return dateB - dateA; // Sort by date descending
+    }
+    
+    // If dates are equal, sort by time
+    const timeA = a.appointmentTime || '';
+    const timeB = b.appointmentTime || '';
+    return timeB.localeCompare(timeA);
+  });
+
+  res.status(200).json({
+    success: true,
+    count: sortedAppointments.length,
+    data: sortedAppointments
   });
 });
 

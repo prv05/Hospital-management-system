@@ -367,56 +367,151 @@ const comprehensiveSeed = async () => {
     console.log(`✅ Created ${medicines.length} medicines`);
 
     // Create Beds
-    console.log('\n🛏️  Creating 50 beds (spread across departments)...');
-    const bedTypes = ['General', 'ICU', 'Private', 'Semi-Private'];
-    const wards = ['Ward A', 'Ward B', 'Ward C', 'Ward D', 'Ward E'];
+    console.log('\n🛏️  Creating 95 beds (spread across wards)...');
     const beds = [];
-    for (let i = 0; i < 50; i++) {
-      const deptIndex = Math.floor(i / 10) % 5; // 10 beds per first 5 departments
-      const floorNum = Math.floor(i / 10) + 1;
+    
+    // General Wards: 4 wards with 10 beds each = 40 beds
+    for (let ward = 1; ward <= 4; ward++) {
+      for (let bed = 1; bed <= 10; bed++) {
+        const bedNum = (ward - 1) * 10 + bed;
+        const deptIdx = Math.floor(bedNum / 16) % departments.length; // Spread across departments
+        beds.push({
+          bedNumber: `G${ward}-${bed}`,
+          department: departments[deptIdx]._id,
+          wardNumber: `GW-${ward}`,
+          wardType: 'general',
+          floor: ward + 1,
+          bedType: 'general',
+          status: bedNum % 3 === 0 ? 'occupied' : 'vacant',
+          dailyCharge: 1000,
+          facilities: [
+            { name: 'AC', isWorking: true },
+            { name: 'Fan', isWorking: true },
+            { name: 'Call Bell', isWorking: true }
+          ]
+        });
+      }
+    }
+    
+    // Semi-Private Wards: 15 wards with 2 beds each = 30 beds
+    for (let ward = 1; ward <= 15; ward++) {
+      for (let bed = 1; bed <= 2; bed++) {
+        const deptIdx = (ward - 1) % departments.length;
+        beds.push({
+          bedNumber: `SP${ward}-${bed}`,
+          department: departments[deptIdx]._id,
+          wardNumber: `SPW-${ward}`,
+          wardType: 'semi-private',
+          floor: Math.floor((ward - 1) / 5) + 2,
+          bedType: 'semi-private',
+          status: ward % 2 === 0 ? 'occupied' : 'vacant',
+          dailyCharge: 2000,
+          facilities: [
+            { name: 'AC', isWorking: true },
+            { name: 'TV', isWorking: true },
+            { name: 'Private Bathroom', isWorking: true },
+            { name: 'Call Bell', isWorking: true }
+          ]
+        });
+      }
+    }
+    
+    // Private Wards: 15 wards with 1 bed each = 15 beds
+    for (let ward = 1; ward <= 15; ward++) {
+      const deptIdx = (ward - 1) % departments.length;
       beds.push({
-        bedNumber: `B${String(i + 1).padStart(3, '0')}`,
-        department: departments[deptIndex]._id,
-        ward: wards[deptIndex],
-        floor: floorNum,
-        roomNumber: `R${Math.floor(i / 2) + 101}`,
-        bedType: bedTypes[i % 4],
-        status: i < 35 ? 'vacant' : 'occupied',
-        dailyCharge: bedTypes[i % 4] === 'ICU' ? 5000 : bedTypes[i % 4] === 'Private' ? 3000 : bedTypes[i % 4] === 'Semi-Private' ? 2000 : 1000,
-        facilities: [{ name: 'AC', isWorking: true }, { name: 'TV', isWorking: i % 2 === 0 }]
+        bedNumber: `P${ward}`,
+        department: departments[deptIdx]._id,
+        wardNumber: `PW-${ward}`,
+        wardType: 'private',
+        floor: Math.floor((ward - 1) / 5) + 3,
+        bedType: 'private',
+        status: ward % 3 === 0 ? 'occupied' : 'vacant',
+        dailyCharge: 3000,
+        facilities: [
+          { name: 'AC', isWorking: true },
+          { name: 'TV', isWorking: true },
+          { name: 'Private Bathroom', isWorking: true },
+          { name: 'Refrigerator', isWorking: true },
+          { name: 'Sofa', isWorking: true },
+          { name: 'Call Bell', isWorking: true }
+        ]
       });
     }
+    
+    // ICU Wards: 2 wards with 5 beds each = 10 beds
+    for (let ward = 1; ward <= 2; ward++) {
+      for (let bed = 1; bed <= 5; bed++) {
+        const deptIdx = ward % 2; // Split between first two departments
+        beds.push({
+          bedNumber: `ICU${ward}-${bed}`,
+          department: departments[deptIdx]._id,
+          wardNumber: `ICU-${ward}`,
+          wardType: 'icu',
+          floor: 1,
+          bedType: 'icu',
+          status: bed % 2 === 0 ? 'occupied' : 'vacant',
+          dailyCharge: 5000,
+          facilities: [
+            { name: 'Ventilator', isWorking: true },
+            { name: 'ECG Monitor', isWorking: true },
+            { name: 'Infusion Pump', isWorking: true },
+            { name: 'Oxygen Supply', isWorking: true },
+            { name: 'Emergency Call', isWorking: true }
+          ]
+        });
+      }
+    }
+    
     await Bed.create(beds);
     console.log(`✅ Created ${beds.length} beds`);
 
-    // Create 30 Appointments (distributed across all doctors)
-    console.log('\n📅 Creating 30 appointments...');
+    // Create Appointments (distributed across all doctors)
+    console.log('\n📅 Creating appointments...');
     const appointments = [];
     const today = new Date();
     
-    for (let i = 0; i < 30; i++) {
-      const patientIdx = i % patients.length;
-      const doctorIdx = i % doctors.length;
-      const daysOffset = Math.floor(i / 5) - 3; // Past, today, and future appointments
-      const appointmentDate = new Date(today);
-      appointmentDate.setDate(today.getDate() + daysOffset);
-      
-      const times = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
-      const statuses = ['scheduled', 'confirmed', 'completed', 'cancelled'];
-      
-      appointments.push({
-        appointmentId: `APT${String(i + 1).padStart(6, '0')}`,
-        patient: patients[patientIdx]._id,
-        doctor: doctors[doctorIdx]._id,
-        department: doctors[doctorIdx].department,
-        appointmentDate,
-        appointmentTime: times[i % times.length],
-        type: i % 3 === 0 ? 'follow-up' : 'consultation',
-        status: daysOffset < 0 ? 'completed' : daysOffset === 0 ? 'confirmed' : 'scheduled',
-        symptoms: `Patient complaint ${i + 1}`,
-        notes: `Medical notes for appointment ${i + 1}`,
-        consultationFee: doctors[doctorIdx].consultationFee
-      });
+    // Ensure each patient gets appointments with multiple doctors
+    // Each patient will get 6 appointments distributed across different doctors
+    for (let patientIdx = 0; patientIdx < patients.length; patientIdx++) {
+      // Each patient gets 6 appointments with different doctors
+      for (let apptNum = 0; apptNum < 6; apptNum++) {
+        const doctorIdx = (patientIdx + apptNum) % doctors.length;
+        
+        // Better distribution of dates: -4, -3, -2, -1, 0, +1
+        const daysOffset = apptNum - 4;
+        const appointmentDate = new Date(today);
+        appointmentDate.setDate(today.getDate() + daysOffset);
+        
+        const times = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
+        let status;
+        
+        // Set statuses based on date and time
+        if (daysOffset < 0) {
+          // Past appointments are completed
+          status = 'completed';
+        } else if (daysOffset === 0) {
+          // Today's appointments - waiting
+          status = 'waiting';
+        } else {
+          // Future appointments
+          status = 'scheduled';
+        }
+        
+        appointments.push({
+          appointmentId: `APT${String(patientIdx * 6 + apptNum + 1).padStart(6, '0')}`,
+          patient: patients[patientIdx]._id,
+          doctor: doctors[doctorIdx]._id,
+          department: doctors[doctorIdx].department,
+          appointmentDate,
+          appointmentTime: times[apptNum % times.length],
+          type: apptNum % 3 === 0 ? 'follow-up' : 'consultation',
+          status: status,
+          symptoms: `Patient complaint ${patientIdx * 6 + apptNum + 1}`,
+          notes: `Medical notes for appointment ${patientIdx * 6 + apptNum + 1}`,
+          consultationFee: doctors[doctorIdx].consultationFee
+        });
+      }
     }
     
     const createdAppointments = await Appointment.create(appointments);
