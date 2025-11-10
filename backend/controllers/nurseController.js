@@ -103,12 +103,16 @@ export const getBedOccupancy = asyncHandler(async (req, res) => {
   
   const query = {};
   if (status) query.status = status;
-  if (ward) query.ward = ward;
-  if (nurse.assignedWard) query.ward = nurse.assignedWard;
+  if (ward) query.wardNumber = ward;
+  if (nurse?.assignedWard) query.wardNumber = nurse.assignedWard;
 
   const beds = await Bed.find(query)
-    .populate('currentPatient.patient')
+    .populate({
+      path: 'currentPatient',
+      populate: { path: 'user' }
+    })
     .populate('assignedNurse')
+    .populate('department')
     .sort({ bedNumber: 1 });
 
   const stats = {

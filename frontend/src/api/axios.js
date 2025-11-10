@@ -44,6 +44,12 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Skip token refresh for login and register endpoints
+    if (originalRequest.url?.includes('/auth/login') || 
+        originalRequest.url?.includes('/auth/register')) {
+      return Promise.reject(error);
+    }
+
     // If 401 and not already retried, try to refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {

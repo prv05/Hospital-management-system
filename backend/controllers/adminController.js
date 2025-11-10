@@ -671,3 +671,104 @@ export const getSystemAnalytics = asyncHandler(async (req, res) => {
     }
   });
 });
+
+// @desc    Assign patient to nurse
+// @route   POST /api/admin/nurses/:nurseId/assign-patient
+// @access  Private (Admin)
+export const assignPatientToNurse = asyncHandler(async (req, res) => {
+  const { nurseId } = req.params;
+  const { patientId, bedNumber } = req.body;
+
+  if (!patientId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Patient ID is required'
+    });
+  }
+
+  const nurse = await Nurse.findById(nurseId);
+  if (!nurse) {
+    return res.status(404).json({
+      success: false,
+      message: 'Nurse not found'
+    });
+  }
+
+  const patient = await Patient.findById(patientId);
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient not found'
+    });
+  }
+
+  // Check if patient is already assigned
+  const existingAssignment = nurse.assignedPatients.find(
+    ap => ap.patient.toString() === patientId && ap.status === 'active'
+  );
+
+  if (existingAssignment) {
+    return res.status(400).json({
+      success: false,
+      message: 'Patient is already assigned to this nurse'
+    });
+  }
+
+  // Add patient to nurse's assigned patients
+  nurse.assignedPatients.push({
+    patient: patientId,
+    assignedDate: new Date(),
+    bedNumber: bedNumber || 'N/A',
+    status: 'active'
+  });
+
+  await nurse.save();
+
+  const updatedNurse = await Nurse.findById(nurseId)
+    .populate('user')
+    .populate({
+      path: 'assignedPatients.patient',
+      populate: { path: 'user' }
+    });
+
+  res.status(200).json({
+    success: true,
+    message: 'Patient assigned to nurse successfully',
+    data: updatedNurse
+  });
+});
+
+// @desc    Unassign patient from nurse
+// @route   DELETE /api/admin/nurses/:nurseId/unassign-patient/:patientId
+// @access  Private (Admin)
+export const unassignPatientFromNurse = asyncHandler(async (req, res) => {
+  const { nurseId, patientId } = req.params;
+
+  const nurse = await Nurse.findById(nurseId);
+  if (!nurse) {
+    return res.status(404).json({
+      success: false,
+      message: 'Nurse not found'
+    });
+  }
+
+  // Find and update the assignment status
+  const assignment = nurse.assignedPatients.find(
+    ap => ap.patient.toString() === patientId && ap.status === 'active'
+  );
+
+  if (!assignment) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient assignment not found'
+    });
+  }
+
+  assignment.status = 'discharged';
+  await nurse.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Patient unassigned from nurse successfully'
+  });
+});

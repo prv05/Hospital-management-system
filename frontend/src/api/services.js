@@ -48,6 +48,7 @@ export const nurseAPI = {
   getBedOccupancy: (params) => api.get('/nurses/beds', { params }),
   recordMedication: (patientId, data) => api.post(`/nurses/patients/${patientId}/medication`, data),
   markAttendance: (data) => api.post('/nurses/attendance', data),
+  dischargeBed: (bedId) => api.put(`/nurses/beds/${bedId}/discharge`),
 };
 
 // Billing APIs

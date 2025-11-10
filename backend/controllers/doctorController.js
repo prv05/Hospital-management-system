@@ -2,6 +2,7 @@ import Doctor from '../models/Doctor.js';
 import Appointment from '../models/Appointment.js';
 import Patient from '../models/Patient.js';
 import Prescription from '../models/Prescription.js';
+import Admission from '../models/Admission.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // @desc    Get doctor dashboard stats
@@ -261,12 +262,35 @@ export const getPatientDetails = asyncHandler(async (req, res) => {
     .limit(10)
     .lean();
 
+  // Get current admission with vitals history
+  const currentAdmission = await Admission.findOne({ 
+    patient: patient._id, 
+    status: 'admitted' 
+  })
+    .populate('bed')
+    .populate({
+      path: 'vitalsHistory.recordedBy',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .sort({ admissionDate: -1 })
+    .lean();
+
+  // Get admission history
+  const admissionHistory = await Admission.find({ patient: patient._id })
+    .populate('bed')
+    .populate('doctor')
+    .sort({ admissionDate: -1 })
+    .limit(5)
+    .lean();
+
   res.status(200).json({
     success: true,
     data: {
       ...patient,
       totalVisits,
-      appointments
+      appointments,
+      currentAdmission,
+      admissionHistory
     }
   });
 });

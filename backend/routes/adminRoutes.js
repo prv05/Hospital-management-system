@@ -16,7 +16,9 @@ import {
   updateBed,
   deleteBed,
   getAnalytics,
-  getAllAppointments
+  getAllAppointments,
+  assignPatientToNurse,
+  unassignPatientFromNurse
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -40,5 +42,7 @@ router.put('/beds/:id', updateBed);
 router.delete('/beds/:id', deleteBed);
 router.get('/appointments', getAllAppointments);
 router.get('/analytics', getAnalytics);
+router.post('/nurses/:nurseId/assign-patient', assignPatientToNurse);
+router.delete('/nurses/:nurseId/unassign-patient/:patientId', unassignPatientFromNurse);
 
 export default router;

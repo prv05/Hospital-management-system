@@ -238,7 +238,7 @@ const PatientDetailsPage = () => {
 
           {/* Tabs */}
           <div className="flex space-x-4 border-b border-gray-200 dark:border-gray-700 mb-6">
-            {['overview', 'medical-history', 'surgeries', 'vaccinations', 'prescriptions'].map(tab => (
+            {['overview', 'vitals', 'medical-history', 'surgeries', 'vaccinations', 'prescriptions'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -299,6 +299,92 @@ const PatientDetailsPage = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Vitals Tab */}
+          {activeTab === 'vitals' && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Patient Vitals History</h2>
+              
+              {patient.currentAdmission && patient.currentAdmission.vitalsHistory && patient.currentAdmission.vitalsHistory.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                    <p className="text-blue-800 dark:text-blue-200 text-sm">
+                      ℹ️ <strong>Current Admission:</strong> Bed {patient.currentAdmission.bed?.bedNumber} - {patient.currentAdmission.reasonForAdmission}
+                    </p>
+                  </div>
+
+                  {patient.currentAdmission.vitalsHistory.slice().reverse().map((vital, index) => (
+                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold text-gray-900 dark:text-white">
+                            {new Date(vital.date).toLocaleDateString()} - {new Date(vital.date).toLocaleTimeString()}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Recorded by: Nurse {vital.recordedBy?.user?.firstName} {vital.recordedBy?.user?.lastName}
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-sm font-medium">
+                          Entry #{patient.currentAdmission.vitalsHistory.length - index}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Blood Pressure</p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">{vital.bloodPressure || 'N/A'}</p>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Temperature</p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">{vital.temperature ? `${vital.temperature}°F` : 'N/A'}</p>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Pulse</p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">{vital.pulse ? `${vital.pulse} bpm` : 'N/A'}</p>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Respiratory Rate</p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">{vital.respiratoryRate ? `${vital.respiratoryRate}/min` : 'N/A'}</p>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">O2 Saturation</p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">{vital.oxygenSaturation ? `${vital.oxygenSaturation}%` : 'N/A'}</p>
+                        </div>
+
+                        {vital.weight && (
+                          <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Weight</p>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-white">{vital.weight} kg</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {vital.notes && (
+                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <strong>Notes:</strong> {vital.notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 dark:text-gray-400 mb-2">No vitals recorded yet</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">
+                    {patient.currentAdmission 
+                      ? 'Nurses will record vitals during the patient\'s admission'
+                      : 'Patient is not currently admitted'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

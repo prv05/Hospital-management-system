@@ -59,11 +59,42 @@ const Login = () => {
     { role: 'Admin', email: 'admin@hospital.com', password: 'admin123' },
     { role: 'Doctor', email: 'dr.sharma@hospital.com', password: 'doctor123' },
     { role: 'Patient', email: 'patient1@email.com', password: 'patient123' },
-    { role: 'Nurse', email: 'nurse.anjali@hospital.com', password: 'nurse123' },
+    { role: 'Nurse', email: 'nurse1@hospital.com', password: 'nurse123' },
   ];
 
-  const quickLogin = (email, password) => {
-    setFormData({ email, password });
+  const quickLogin = async (email, password) => {
+    // perform immediate login (auto-submit) for quick login buttons
+    setLoading(true);
+    try {
+      const response = await authAPI.login({ email, password });
+      const { user, accessToken, refreshToken } = response.data.data;
+
+      // store tokens
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+
+      // update auth store
+      setAuth(user, accessToken, refreshToken);
+
+      toast.success('Quick login successful');
+
+      const dashboardMap = {
+        doctor: '/doctor/dashboard',
+        patient: '/patient/dashboard',
+        nurse: '/nurse/dashboard',
+        admin: '/admin/dashboard',
+        billing: '/billing/dashboard',
+        pharmacy: '/pharmacy/dashboard',
+        lab: '/lab/dashboard',
+      };
+
+      navigate(dashboardMap[user.role] || '/');
+    } catch (error) {
+      console.error('Quick login error:', error);
+      toast.error(error.response?.data?.message || 'Quick login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
