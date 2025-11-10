@@ -25,12 +25,38 @@ export const getNurseDashboard = asyncHandler(async (req, res) => {
 
   const activePatients = nurse.assignedPatients.filter(ap => ap.status === 'active');
 
+  // Get bed statistics
+  const bedQuery = {};
+  if (nurse.assignedWard) bedQuery.wardNumber = nurse.assignedWard;
+  
+  const allBeds = await Bed.find(bedQuery);
+  const bedStats = {
+    total: allBeds.length,
+    occupied: allBeds.filter(b => b.status === 'occupied').length,
+    vacant: allBeds.filter(b => b.status === 'vacant').length,
+    available: allBeds.filter(b => b.status === 'vacant').length
+  };
+
+  // Get vitals count for assigned patients
+  const patientIds = activePatients.map(ap => ap.patient._id);
+  const admissions = await Admission.find({
+    patient: { $in: patientIds },
+    status: 'admitted'
+  });
+  
+  let totalVitalsRecorded = 0;
+  admissions.forEach(admission => {
+    totalVitalsRecorded += admission.vitalsHistory.length;
+  });
+
   res.status(200).json({
     success: true,
     data: {
       nurse,
       activePatients,
-      totalAssigned: activePatients.length
+      totalAssigned: activePatients.length,
+      bedStats,
+      vitalsRecorded: totalVitalsRecorded
     }
   });
 });

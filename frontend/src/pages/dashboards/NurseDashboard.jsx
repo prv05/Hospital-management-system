@@ -11,6 +11,12 @@ const NurseDashboard = () => {
     activePatients: 0,
     totalAssigned: 0
   });
+  const [bedStats, setBedStats] = useState({
+    vacant: 0,
+    occupied: 0,
+    total: 0
+  });
+  const [vitalsCount, setVitalsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +27,19 @@ const NurseDashboard = () => {
     try {
       const response = await nurseAPI.getDashboard();
       console.log('Dashboard data:', response.data);
-      setDashboardData(response.data.data);
+      const data = response.data.data;
+      
+      setDashboardData(data);
+      
+      // Set bed stats from dashboard API
+      if (data.bedStats) {
+        setBedStats(data.bedStats);
+      }
+      
+      // Set vitals count from dashboard API
+      if (data.vitalsRecorded !== undefined) {
+        setVitalsCount(data.vitalsRecorded);
+      }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
       toast.error('Failed to fetch dashboard data');
@@ -45,8 +63,8 @@ const NurseDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard title="Assigned Patients" value={dashboardData.totalAssigned || 0} icon={FiUsers} color="blue" />
-              <StatCard title="Available Beds" value={0} icon={FiHome} color="green" />
-              <StatCard title="Vitals Recorded" value={0} icon={FiActivity} color="purple" />
+              <StatCard title="Available Beds" value={bedStats.vacant || 0} icon={FiHome} color="green" />
+              <StatCard title="Vitals Recorded" value={vitalsCount} icon={FiActivity} color="purple" />
               <StatCard title="On Duty Time" value="8h" icon={FiClock} color="orange" />
             </div>
           )}

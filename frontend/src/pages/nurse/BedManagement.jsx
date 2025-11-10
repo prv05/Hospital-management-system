@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
+import Navbar from '../../components/Navbar';
 import { nurseAPI } from '../../api/services';
 import toast from 'react-hot-toast';
 
@@ -58,6 +59,7 @@ const BedManagement = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
       <Sidebar role="nurse" />
       <div className="flex-1 ml-64 mt-16">
         <div className="p-8">
