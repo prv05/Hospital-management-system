@@ -33,6 +33,7 @@ export const patientAPI = {
   getAppointments: (params) => api.get('/patients/appointments', { params }),
   cancelAppointment: (id, reason) => api.delete(`/patients/appointments/${id}`, { data: { reason } }),
   getMedicalHistory: () => api.get('/patients/medical-history'),
+  getLabTests: () => api.get('/patients/lab-tests'),
   getBillingHistory: () => api.get('/patients/billing'),
   updateProfile: (data) => api.put('/patients/profile', data),
   getDepartments: () => api.get('/patients/departments'),

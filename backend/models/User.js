@@ -96,6 +96,7 @@ userSchema.virtual('fullName').get(function() {
 
 // Calculate age
 userSchema.virtual('age').get(function() {
+  if (!this.dateOfBirth) return null;
   return Math.floor((Date.now() - this.dateOfBirth.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
 });
 

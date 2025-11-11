@@ -84,6 +84,10 @@ const doctorSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isAvailable: {
+    type: Boolean,
+    default: true
+  },
   isOnLeave: {
     type: Boolean,
     default: false

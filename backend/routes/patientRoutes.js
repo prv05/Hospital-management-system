@@ -9,7 +9,8 @@ import {
   getBillingHistory,
   updateProfile,
   getDepartments,
-  getDoctorsByDepartment
+  getDoctorsByDepartment,
+  getPatientLabTests
 } from '../controllers/patientController.js';
 
 const router = express.Router();
@@ -24,6 +25,7 @@ router.post('/appointments', bookAppointment);
 router.get('/appointments', getMyAppointments);
 router.delete('/appointments/:id', cancelAppointment);
 router.get('/medical-history', getMedicalHistory);
+router.get('/lab-tests', getPatientLabTests);
 router.get('/billing', getBillingHistory);
 router.put('/profile', updateProfile);
 

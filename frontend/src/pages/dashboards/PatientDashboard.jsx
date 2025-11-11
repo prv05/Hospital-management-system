@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { FiCalendar, FiFileText, FiDollarSign, FiActivity } from 'react-icons/fi';
 import { patientAPI } from '../../api/services';
 import { toast } from 'react-hot-toast';
@@ -18,9 +18,11 @@ const PatientDashboard = () => {
   const fetchDashboard = async () => {
     try {
       const response = await patientAPI.getDashboard();
+      console.log('Dashboard response:', response);
       setDashboardData(response.data.data);
     } catch (error) {
-      toast.error('Failed to fetch dashboard data');
+      console.error('Dashboard fetch error:', error);
+      toast.error(error.response?.data?.message || 'Failed to fetch dashboard data');
     } finally {
       setLoading(false);
     }
@@ -50,65 +52,65 @@ const PatientDashboard = () => {
                 title="Upcoming Appointments"
                 value={dashboardData?.upcomingAppointments?.length || 0}
                 icon={FiCalendar}
-              color="blue"
-            />
-            <StatCard
-              title="Prescriptions"
-              value={dashboardData?.recentPrescriptions?.length || 0}
-              icon={FiFileText}
-              color="green"
-            />
-            <StatCard
-              title="Pending Bills"
-              value={dashboardData?.pendingBills?.length || 0}
-              icon={FiDollarSign}
-              color="red"
-            />
-            <StatCard
-              title="Total Visits"
-              value={dashboardData?.patient?.totalVisits || 0}
-              icon={FiActivity}
-              color="purple"
-            />
-          </div>
+                color="blue"
+              />
+              <StatCard
+                title="Prescriptions"
+                value={dashboardData?.recentPrescriptions?.length || 0}
+                icon={FiFileText}
+                color="green"
+              />
+              <StatCard
+                title="Pending Bills"
+                value={dashboardData?.pendingBills?.length || 0}
+                icon={FiDollarSign}
+                color="red"
+              />
+              <StatCard
+                title="Total Visits"
+                value={dashboardData?.patient?.totalVisits || 0}
+                icon={FiActivity}
+                color="purple"
+              />
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card title="Upcoming Appointments">
-              {dashboardData?.upcomingAppointments?.length > 0 ? (
-                <div className="space-y-4">
-                  {dashboardData.upcomingAppointments.map((apt) => (
-                    <div key={apt._id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <p className="font-semibold">Dr. {apt.doctor?.user?.firstName} {apt.doctor?.user?.lastName}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(apt.appointmentDate).toLocaleDateString()} at {apt.appointmentTime}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No upcoming appointments</p>
-              )}
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card title="Upcoming Appointments">
+                {dashboardData?.upcomingAppointments?.length > 0 ? (
+                  <div className="space-y-4">
+                    {dashboardData.upcomingAppointments.map((apt) => (
+                      <div key={apt._id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <p className="font-semibold">Dr. {apt.doctor?.user?.firstName} {apt.doctor?.user?.lastName}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {apt.appointmentDate ? new Date(apt.appointmentDate).toLocaleDateString() : 'Date not set'} at {apt.appointmentTime || 'Time not set'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No upcoming appointments</p>
+                )}
+              </Card>
 
-            <Card title="Recent Prescriptions">
-              {dashboardData?.recentPrescriptions?.length > 0 ? (
-                <div className="space-y-4">
-                  {dashboardData.recentPrescriptions.map((prescription) => (
-                    <div key={prescription._id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <p className="font-semibold">{prescription.diagnosis}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {prescription.medicines?.length || 0} medicines
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No recent prescriptions</p>
-              )}
-            </Card>
+              <Card title="Recent Prescriptions">
+                {dashboardData?.recentPrescriptions?.length > 0 ? (
+                  <div className="space-y-4">
+                    {dashboardData.recentPrescriptions.map((prescription) => (
+                      <div key={prescription._id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <p className="font-semibold">{prescription.diagnosis}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {prescription.medicines?.length || 0} medicines
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No recent prescriptions</p>
+                )}
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Patient from '../models/Patient.js';
 import Appointment from '../models/Appointment.js';
 import Prescription from '../models/Prescription.js';
@@ -11,6 +12,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 // @desc    Get patient dashboard
 // @route   GET /api/patients/dashboard
 // @access  Private (Patient)
+// FIXED: Added safe date handling to prevent getTime() errors
 export const getPatientDashboard = asyncHandler(async (req, res) => {
   const patient = await Patient.findOne({ user: req.user._id })
     .populate('user');
@@ -33,6 +35,8 @@ export const getPatientDashboard = asyncHandler(async (req, res) => {
     .populate('department')
     .lean();
 
+  console.log('✅ FIXED VERSION LOADED - Total appointments:', allAppointments.length);
+
   // Filter upcoming appointments in JavaScript to avoid date comparison issues
   const now = new Date();
   const upcomingAppointments = allAppointments
@@ -41,7 +45,11 @@ export const getPatientDashboard = asyncHandler(async (req, res) => {
       const aptDate = new Date(apt.appointmentDate);
       return aptDate >= now && ['scheduled', 'confirmed'].includes(apt.status);
     })
-    .sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate))
+    .sort((a, b) => {
+      const dateA = a.appointmentDate ? new Date(a.appointmentDate) : new Date(0);
+      const dateB = b.appointmentDate ? new Date(b.appointmentDate) : new Date(0);
+      return dateA - dateB;
+    })
     .slice(0, 5);
 
   const recentPrescriptions = await Prescription.find({ patient: patient._id })
@@ -117,6 +125,29 @@ export const bookAppointment = asyncHandler(async (req, res) => {
   patient.appointments.push(appointment._id);
   patient.totalVisits += 1;
   await patient.save();
+
+  // Auto-generate bill for the appointment
+  const billId = `BILL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const consultationFee = doctorData.consultationFee || 500;
+  await Billing.create({
+    billId,
+    patient: patient._id,
+    billType: 'OPD',
+    appointment: appointment._id,
+    items: [{
+      itemType: 'consultation',
+      description: `Consultation with Dr. ${doctorData.user.firstName} ${doctorData.user.lastName}`,
+      quantity: 1,
+      unitPrice: consultationFee,
+      totalPrice: consultationFee
+    }],
+    subtotal: consultationFee,
+    totalAmount: consultationFee,
+    amountPaid: 0,
+    balanceAmount: consultationFee,
+    paymentStatus: 'pending',
+    generatedBy: doctorData.user._id
+  });
 
   res.status(201).json({
     success: true,
@@ -207,6 +238,7 @@ export const cancelAppointment = asyncHandler(async (req, res) => {
 // @access  Private (Patient)
 export const getMedicalHistory = asyncHandler(async (req, res) => {
   const patient = await Patient.findOne({ user: req.user._id })
+    .populate('user', 'firstName lastName email phone dateOfBirth gender address')
     .populate('prescriptions')
     .populate('labReports')
     .populate({
@@ -214,14 +246,67 @@ export const getMedicalHistory = asyncHandler(async (req, res) => {
       populate: { path: 'doctor', populate: 'user' }
     });
 
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient profile not found'
+    });
+  }
+
+  // Calculate age if dateOfBirth is available
+  let age = null;
+  if (patient.user.dateOfBirth) {
+    const today = new Date();
+    const birthDate = new Date(patient.user.dateOfBirth);
+    age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+  }
+
+  // Calculate BMI if height and weight are available
+  let bmi = null;
+  if (patient.height && patient.weight) {
+    const heightInMeters = patient.height / 100;
+    bmi = (patient.weight / (heightInMeters * heightInMeters)).toFixed(2);
+  }
+
   res.status(200).json({
     success: true,
     data: {
+      // Personal Information
+      personalInfo: {
+        firstName: patient.user.firstName,
+        lastName: patient.user.lastName,
+        email: patient.user.email,
+        phone: patient.user.phone,
+        dateOfBirth: patient.user.dateOfBirth,
+        age: age,
+        gender: patient.user.gender,
+        address: patient.user.address,
+        patientId: patient.patientId,
+        bloodGroup: patient.bloodGroup,
+        registrationDate: patient.registrationDate
+      },
+      // Physical Information
+      physicalInfo: {
+        height: patient.height,
+        weight: patient.weight,
+        bmi: bmi
+      },
+      // Emergency Contact
+      emergencyContact: patient.emergencyContact,
+      // Medical Data
       medicalHistory: patient.medicalHistory,
       allergies: patient.allergies,
       chronicDiseases: patient.chronicDiseases,
+      currentMedications: patient.currentMedications,
       surgeries: patient.surgeries,
       vaccinations: patient.vaccinations,
+      // Insurance
+      insurance: patient.insurance,
+      // Records
       prescriptions: patient.prescriptions,
       labReports: patient.labReports,
       appointments: patient.appointments
@@ -289,20 +374,55 @@ export const getDepartments = asyncHandler(async (req, res) => {
 export const getDoctorsByDepartment = asyncHandler(async (req, res) => {
   const { department } = req.query;
   
-  const query = { isAvailable: true };
+  // Query for available doctors (not on leave and available)
+  const query = { 
+    isAvailable: true,
+    isOnLeave: false
+  };
+  
   if (department) {
-    query.department = department;
+    // Convert string to ObjectId for proper MongoDB query
+    query.department = new mongoose.Types.ObjectId(department);
   }
 
   const doctors = await Doctor.find(query)
-    .populate('user', 'firstName lastName')
+    .populate('user', 'firstName lastName email phone')
     .populate('department', 'name')
-    .select('specialization consultationFee')
     .sort({ 'user.firstName': 1 });
+
+  console.log(`Found ${doctors.length} doctors for department:`, department);
 
   res.status(200).json({
     success: true,
     count: doctors.length,
     data: doctors
+  });
+});
+
+// @desc    Get patient's lab tests
+// @route   GET /api/patients/lab-tests
+// @access  Private (Patient)
+export const getPatientLabTests = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id });
+  
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient profile not found'
+    });
+  }
+
+  const labTests = await LabTest.find({ patient: patient._id })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .populate('technician', 'firstName lastName')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: labTests.length,
+    data: labTests
   });
 });

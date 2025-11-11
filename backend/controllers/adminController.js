@@ -307,7 +307,9 @@ export const createUser = asyncHandler(async (req, res) => {
     profile = await Doctor.create({
       user: user._id,
       employeeId: generateDoctorId(),
-      ...roleSpecificData
+      ...roleSpecificData,
+      isAvailable: roleSpecificData.isAvailable !== undefined ? roleSpecificData.isAvailable : true,
+      isOnLeave: roleSpecificData.isOnLeave || false
     });
   } else if (role === 'nurse' && roleSpecificData) {
     profile = await Nurse.create({
