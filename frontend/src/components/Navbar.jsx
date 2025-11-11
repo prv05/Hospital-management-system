@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FiMenu, FiX, FiSun, FiMoon } from 'react-icons/fi';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useThemeStore from '../store/themeStore';
 import useAuthStore from '../store/authStore';
 
@@ -9,13 +9,22 @@ const Navbar = () => {
   const { isDarkMode, toggleTheme } = useThemeStore();
   const { isAuthenticated, user, logout } = useAuthStore();
 
+  // Ensure theme is applied on mount
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
   const handleLogout = () => {
     logout();
     window.location.href = '/';
   };
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-lg fixed w-full z-50">
+    <nav className="bg-white dark:bg-gray-800 shadow-lg fixed top-0 w-full z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">

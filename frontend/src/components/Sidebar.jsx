@@ -69,7 +69,7 @@ const Sidebar = ({ role }) => {
   };
 
   return (
-    <div className="h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed left-0 top-16 overflow-y-auto">
+    <div className="h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed left-0 top-16 overflow-y-auto z-40">
       <div className="flex flex-col h-full">
         <nav className="flex-1 px-4 py-6 space-y-2">
           {navigation.map((item) => (

@@ -565,6 +565,9 @@ export const addVaccinationRecord = asyncHandler(async (req, res) => {
 // @route   POST /api/doctors/patients/:id/prescriptions
 // @access  Private (Doctor)
 export const addPrescription = asyncHandler(async (req, res) => {
+  console.log('=== Add Prescription Request ===');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  
   const doctor = await Doctor.findOne({ user: req.user._id });
   
   if (!doctor) {
@@ -584,6 +587,8 @@ export const addPrescription = asyncHandler(async (req, res) => {
   }
 
   const { appointment, diagnosis, medicines, notes, followUpDate } = req.body;
+
+  console.log('Creating prescription with medicines:', medicines);
 
   const prescription = await Prescription.create({
     prescriptionId: `PRX${Date.now()}`,
@@ -605,6 +610,8 @@ export const addPrescription = asyncHandler(async (req, res) => {
       populate: { path: 'user', select: 'firstName lastName' }
     })
     .populate('patient');
+
+  console.log('Prescription created successfully:', prescription._id);
 
   res.status(201).json({
     success: true,

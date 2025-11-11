@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
+import Navbar from '../../components/Navbar';
 import { doctorAPI } from '../../api/services';
 import toast from 'react-hot-toast';
 import { FiEdit, FiPlus, FiSave, FiX } from 'react-icons/fi';
@@ -44,7 +45,7 @@ const PatientDetailsPage = () => {
 
   const [prescriptionForm, setPrescriptionForm] = useState({
     diagnosis: '',
-    medicines: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
+    medicines: [{ medicineName: '', dosage: '', frequency: '', duration: '', instructions: '' }],
     notes: '',
     followUpDate: ''
   });
@@ -165,7 +166,7 @@ const PatientDetailsPage = () => {
   const addPrescriptionMedicine = () => {
     setPrescriptionForm(prev => ({
       ...prev,
-      medicines: [...prev.medicines, { name: '', dosage: '', frequency: '', duration: '', instructions: '' }]
+      medicines: [...prev.medicines, { medicineName: '', dosage: '', frequency: '', duration: '', instructions: '' }]
     }));
   };
 
@@ -182,7 +183,7 @@ const PatientDetailsPage = () => {
       toast.success('Prescription added successfully');
       setPrescriptionForm({
         diagnosis: '',
-        medicines: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
+        medicines: [{ medicineName: '', dosage: '', frequency: '', duration: '', instructions: '' }],
         notes: '',
         followUpDate: ''
       });
@@ -217,6 +218,7 @@ const PatientDetailsPage = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
       <Sidebar role="doctor" />
       <div className="flex-1 ml-64 mt-16">
         <div className="p-8">
@@ -804,10 +806,10 @@ const PatientDetailsPage = () => {
                         <input
                           type="text"
                           placeholder="Medicine"
-                          value={med.name}
+                          value={med.medicineName}
                           onChange={(e) => {
                             const newMeds = [...prescriptionForm.medicines];
-                            newMeds[index].name = e.target.value;
+                            newMeds[index].medicineName = e.target.value;
                             setPrescriptionForm({...prescriptionForm, medicines: newMeds});
                           }}
                           className="px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-600 dark:border-gray-500 dark:text-white"

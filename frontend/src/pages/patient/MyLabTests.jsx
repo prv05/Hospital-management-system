@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../../api/axios';
-import Card from '../../components/Card';
-import Table from '../../components/Table';
+import Navbar from '../../components/Navbar';
+import Sidebar from '../../components/Sidebar';
+import { FaFlask, FaCheckCircle, FaClock, FaFilePdf, FaEye } from 'react-icons/fa';
 
 const MyLabTests = () => {
   const [labTests, setLabTests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTest, setSelectedTest] = useState(null);
-  const [showResults, setShowResults] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, completed, pending
+  const [showDetails, setShowDetails] = useState(false);
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     fetchLabTests();
@@ -17,7 +18,7 @@ const MyLabTests = () => {
 
   const fetchLabTests = async () => {
     try {
-      const { data } = await api.get('/api/patients/lab-tests');
+      const { data } = await api.get('/patients/lab-tests');
       setLabTests(data.data || []);
     } catch (error) {
       console.error('Error fetching lab tests:', error);
@@ -34,285 +35,368 @@ const MyLabTests = () => {
     return true;
   });
 
+  const totalTests = labTests.length;
+  const completedTests = labTests.filter(t => t.status === 'completed').length;
+  const pendingTests = labTests.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length;
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 border-green-200';
       case 'in-process':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'sample-collected':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'requested':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 border-red-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white border-gray-200 dark:border-gray-700';
     }
   };
 
-  const getUrgencyColor = (urgency) => {
-    switch (urgency) {
-      case 'stat':
-        return 'bg-red-100 text-red-800';
-      case 'urgent':
-        return 'bg-orange-100 text-orange-800';
-      case 'routine':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
-  const viewResults = (test) => {
+  const viewTestDetails = (test) => {
     setSelectedTest(test);
-    setShowResults(true);
+    setShowDetails(true);
   };
-
-  const columns = [
-    { 
-      header: 'Test ID', 
-      accessor: 'testId',
-      render: (row) => (
-        <span className="font-medium text-blue-600">{row.testId}</span>
-      )
-    },
-    { 
-      header: 'Test Name', 
-      accessor: 'testName'
-    },
-    { 
-      header: 'Category', 
-      accessor: 'testCategory'
-    },
-    { 
-      header: 'Doctor', 
-      accessor: 'doctor',
-      render: (row) => row.doctor ? `Dr. ${row.doctor.user?.firstName || ''} ${row.doctor.user?.lastName || ''}` : 'N/A'
-    },
-    { 
-      header: 'Date', 
-      accessor: 'createdAt',
-      render: (row) => new Date(row.createdAt).toLocaleDateString()
-    },
-    { 
-      header: 'Urgency', 
-      accessor: 'urgency',
-      render: (row) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getUrgencyColor(row.urgency)}`}>
-          {row.urgency.toUpperCase()}
-        </span>
-      )
-    },
-    { 
-      header: 'Status', 
-      accessor: 'status',
-      render: (row) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(row.status)}`}>
-          {row.status.replace('-', ' ').toUpperCase()}
-        </span>
-      )
-    },
-    {
-      header: 'Actions',
-      accessor: 'actions',
-      render: (row) => (
-        <button
-          onClick={() => viewResults(row)}
-          disabled={row.status !== 'completed'}
-          className={`px-3 py-1 rounded text-sm ${
-            row.status === 'completed'
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          {row.status === 'completed' ? 'View Results' : 'Pending'}
-        </button>
-      )
-    }
-  ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading lab tests...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Navbar />
+        <Sidebar role="patient" />
+        <div className="ml-64 mt-16 p-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-primary-600 dark:text-primary-400">Loading...</div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const completedTests = labTests.filter(t => t.status === 'completed').length;
-  const pendingTests = labTests.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length;
-
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">My Lab Tests</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilter('pending')}
-            className={`px-4 py-2 rounded-lg ${filter === 'pending' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            Pending
-          </button>
-          <button
-            onClick={() => setFilter('completed')}
-            className={`px-4 py-2 rounded-lg ${filter === 'completed' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            Completed
-          </button>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
+      <Sidebar role="patient" />
+      
+      <div className="ml-64 mt-16 p-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white dark:text-white mb-2">My Lab Tests</h1>
+          <p className="text-gray-600 dark:text-gray-400 dark:text-gray-400">View and track your laboratory test results</p>
         </div>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <div className="text-sm text-gray-600 mb-1">Total Tests</div>
-          <div className="text-2xl font-bold text-gray-800">{labTests.length}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-gray-600 mb-1">Completed</div>
-          <div className="text-2xl font-bold text-green-600">{completedTests}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-gray-600 mb-1">Pending</div>
-          <div className="text-2xl font-bold text-orange-600">{pendingTests}</div>
-        </Card>
-      </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 dark:text-gray-400 text-sm mb-1">Total Tests</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-white dark:text-white">{totalTests}</p>
+              </div>
+              <div className="bg-primary-100 dark:bg-primary-900/30 p-4 rounded-lg">
+                <FaFlask className="text-primary-600 dark:text-primary-400 text-2xl" />
+              </div>
+            </div>
+          </div>
 
-      {/* Lab Tests Table */}
-      <Card>
-        <h2 className="text-xl font-semibold mb-4">Lab Test History</h2>
-        {filteredTests.length > 0 ? (
-          <Table columns={columns} data={filteredTests} />
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 dark:text-gray-400 text-sm mb-1">Completed</p>
+                <p className="text-3xl font-bold text-green-600 dark:text-green-400">{completedTests}</p>
+              </div>
+              <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-lg">
+                <FaCheckCircle className="text-green-600 dark:text-green-400 text-2xl" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 dark:text-gray-400 text-sm mb-1">Pending</p>
+                <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{pendingTests}</p>
+              </div>
+              <div className="bg-orange-100 dark:bg-orange-900/30 p-4 rounded-lg">
+                <FaClock className="text-orange-600 dark:text-orange-400 text-2xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Buttons */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-6 border border-gray-200 dark:border-gray-700 dark:border-gray-700">
+          <div className="flex gap-3">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                filter === 'all'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              All Tests
+            </button>
+            <button
+              onClick={() => setFilter('completed')}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                filter === 'completed'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              Completed
+            </button>
+            <button
+              onClick={() => setFilter('pending')}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                filter === 'pending'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              Pending
+            </button>
+          </div>
+        </div>
+
+        {/* Lab Tests List */}
+        {filteredTests.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-12 text-center border border-gray-200 dark:border-gray-700">
+            <FaFlask className="text-gray-300 text-6xl mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">No Lab Tests Found</h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              {filter === 'all' 
+                ? 'You have no lab tests yet.'
+                : `You have no ${filter} lab tests.`}
+            </p>
+          </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            No lab tests found for the selected filter
+          <div className="grid grid-cols-1 gap-4">
+            {filteredTests.map((test) => (
+              <div
+                key={test._id}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 hover:border-primary-300 transition-all duration-200"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <h3 className="text-xl font-semibold text-gray-800 dark:text-white">{test.testName}</h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(test.status)}`}>
+                        {test.status?.replace('-', ' ').toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Test ID</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-white">{test.testId || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Ordered By</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-white">
+                          Dr. {test.orderedBy?.name || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Ordered Date</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-white">{formatDate(test.orderDate)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Sample Type</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-white">{test.sampleType || 'N/A'}</p>
+                      </div>
+                    </div>
+
+                    {test.status === 'completed' && test.completedDate && (
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-500">
+                          Completed on {formatDate(test.completedDate)}
+                          {test.performedBy && ` by ${test.performedBy.name}`}
+                        </p>
+                      </div>
+                    )}
+
+                    {test.notes && (
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-500 mb-1">Notes:</p>
+                        <p className="text-sm text-gray-700">{test.notes}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2 ml-4">
+                    <button
+                      onClick={() => viewTestDetails(test)}
+                      className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                    >
+                      <FaEye />
+                      View Details
+                    </button>
+                    {test.status === 'completed' && test.reportUrl && (
+                      <a
+                        href={test.reportUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 justify-center"
+                      >
+                        <FaFilePdf />
+                        Download PDF
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-      </Card>
+      </div>
 
-      {/* Test Results Modal */}
-      {showResults && selectedTest && (
+      {/* Test Details Modal */}
+      {showDetails && selectedTest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b sticky top-0 bg-white">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-6 rounded-t-xl">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Lab Test Results</h2>
+                <div>
+                  <h2 className="text-2xl font-bold mb-1">{selectedTest.testName}</h2>
+                  <p className="text-primary-100">Test ID: {selectedTest.testId || 'N/A'}</p>
+                </div>
                 <button
-                  onClick={() => setShowResults(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                  onClick={() => setShowDetails(false)}
+                  className="text-white hover:text-primary-100 text-2xl"
                 >
                   ×
                 </button>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Test Header */}
-              <div className="grid grid-cols-2 gap-4 border-b pb-4">
-                <div>
-                  <p className="text-sm text-gray-600">Test ID</p>
-                  <p className="font-semibold">{selectedTest.testId}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Test Name</p>
-                  <p className="font-semibold">{selectedTest.testName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Category</p>
-                  <p className="font-semibold">{selectedTest.testCategory}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Ordered By</p>
-                  <p className="font-semibold">
-                    Dr. {selectedTest.doctor?.user?.firstName || ''} {selectedTest.doctor?.user?.lastName || ''}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Collected Date</p>
-                  <p className="font-semibold">
-                    {selectedTest.sampleCollectedAt 
-                      ? new Date(selectedTest.sampleCollectedAt).toLocaleDateString()
-                      : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Completed Date</p>
-                  <p className="font-semibold">
-                    {selectedTest.completedAt 
-                      ? new Date(selectedTest.completedAt).toLocaleDateString()
-                      : 'N/A'}
-                  </p>
+            {/* Modal Body */}
+            <div className="p-6">
+              {/* Test Information */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Test Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Status</p>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(selectedTest.status)}`}>
+                      {selectedTest.status?.replace('-', ' ').toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Sample Type</p>
+                    <p className="font-medium text-gray-800 dark:text-white">{selectedTest.sampleType || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Ordered By</p>
+                    <p className="font-medium text-gray-800 dark:text-white">Dr. {selectedTest.orderedBy?.name || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Ordered Date</p>
+                    <p className="font-medium text-gray-800 dark:text-white">{formatDate(selectedTest.orderDate)}</p>
+                  </div>
+                  {selectedTest.sampleCollectionDate && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-500 mb-1">Sample Collected</p>
+                      <p className="font-medium text-gray-800 dark:text-white">{formatDate(selectedTest.sampleCollectionDate)}</p>
+                    </div>
+                  )}
+                  {selectedTest.completedDate && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-500 mb-1">Completed Date</p>
+                      <p className="font-medium text-gray-800 dark:text-white">{formatDate(selectedTest.completedDate)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Results */}
-              {selectedTest.results && selectedTest.results.length > 0 ? (
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Test Results</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border p-3 text-left">Parameter</th>
-                          <th className="border p-3 text-left">Value</th>
-                          <th className="border p-3 text-left">Unit</th>
-                          <th className="border p-3 text-left">Normal Range</th>
-                          <th className="border p-3 text-left">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedTest.results.map((result, index) => (
-                          <tr key={index} className={result.isAbnormal ? 'bg-red-50' : ''}>
-                            <td className="border p-3">{result.parameter}</td>
-                            <td className="border p-3 font-semibold">{result.value}</td>
-                            <td className="border p-3">{result.unit}</td>
-                            <td className="border p-3">{result.normalRange}</td>
-                            <td className="border p-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                result.isAbnormal ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                              }`}>
-                                {result.isAbnormal ? 'ABNORMAL' : 'NORMAL'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              {/* Test Results */}
+              {selectedTest.status === 'completed' && selectedTest.results && selectedTest.results.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Test Results</h3>
+                  <div className="space-y-3">
+                    {selectedTest.results.map((result, index) => (
+                      <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-500 mb-1">Parameter</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{result.parameter}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 mb-1">Value</p>
+                            <p className="font-semibold text-gray-800 dark:text-white">{result.value} {result.unit}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 mb-1">Reference Range</p>
+                            <p className="text-sm text-gray-700">{result.referenceRange || 'N/A'}</p>
+                          </div>
+                        </div>
+                        {result.remarks && (
+                          <div className="mt-2">
+                            <p className="text-sm text-gray-500">Remarks:</p>
+                            <p className="text-sm text-gray-700">{result.remarks}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  No results available yet
-                </div>
               )}
 
+              {/* Notes */}
               {selectedTest.notes && (
-                <div className="border-t pt-4">
-                  <p className="text-sm text-gray-600 mb-1">Notes</p>
-                  <p className="text-gray-800">{selectedTest.notes}</p>
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Notes</h3>
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <p className="text-gray-700">{selectedTest.notes}</p>
+                  </div>
                 </div>
               )}
 
-              <div className="flex justify-end gap-3">
+              {/* Performed By */}
+              {selectedTest.performedBy && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Performed By</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="font-medium text-gray-800 dark:text-white">{selectedTest.performedBy.name}</p>
+                    {selectedTest.performedBy.employeeId && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400">ID: {selectedTest.performedBy.employeeId}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
                 <button
-                  onClick={() => setShowResults(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  onClick={() => setShowDetails(false)}
+                  className="flex-1 bg-gray-200 text-gray-800 dark:text-white px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                 >
                   Close
                 </button>
-                <button
-                  onClick={() => toast.success('Download feature coming soon!')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Download Report
-                </button>
+                {selectedTest.status === 'completed' && selectedTest.reportUrl && (
+                  <a
+                    href={selectedTest.reportUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <FaFilePdf />
+                    Download Full Report
+                  </a>
+                )}
               </div>
             </div>
           </div>
