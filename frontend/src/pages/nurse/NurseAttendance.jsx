@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
 import StatCard from '../../components/StatCard';
 import { FiClock, FiCheckCircle, FiCalendar } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { nurseAPI } from '../../api/services';
 
 const NurseAttendance = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -15,15 +16,39 @@ const NurseAttendance = () => {
     reason: '',
     type: 'sick'
   });
+  const [nurseData, setNurseData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const attendanceData = {
-    currentShift: 'Morning (8 AM - 4 PM)',
+    currentShift: nurseData?.shiftTiming 
+      ? `${nurseData.shiftTiming.charAt(0).toUpperCase() + nurseData.shiftTiming.slice(1)} (${nurseData.currentShift?.start || 'Not Set'} - ${nurseData.currentShift?.end || 'Not Set'})`
+      : 'Not Set',
     hoursWorked: 6.5,
     overtimeHours: 0,
     thisMonth: {
       present: 22,
       absent: 0,
       leaves: 2
+    }
+  };
+
+  useEffect(() => {
+    fetchNurseData();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchNurseData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNurseData = async () => {
+    try {
+      const response = await nurseAPI.getDashboard();
+      console.log('Nurse attendance data:', response.data);
+      setNurseData(response.data.data?.nurse || response.data.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching nurse data:', error);
+      toast.error('Failed to load nurse data');
+      setLoading(false);
     }
   };
 
@@ -63,12 +88,12 @@ const NurseAttendance = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900 overflow-hidden hover:shadow-md transition-all">
-              <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-primary-100 dark:border-primary-900 overflow-hidden hover:shadow-md transition-all">
+              <div className="h-1 bg-gradient-to-r from-primary-500 to-primary-600"></div>
               <div className="p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <FiClock className="text-2xl text-blue-600 dark:text-blue-400" />
+                  <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                    <FiClock className="text-2xl text-primary-600 dark:text-primary-400" />
                   </div>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">Current Shift</p>
@@ -78,12 +103,12 @@ const NurseAttendance = () => {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-emerald-100 dark:border-emerald-900 overflow-hidden hover:shadow-md transition-all">
-              <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-600"></div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-primary-100 dark:border-primary-900 overflow-hidden hover:shadow-md transition-all">
+              <div className="h-1 bg-gradient-to-r from-primary-500 to-primary-600"></div>
               <div className="p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                    <FiCheckCircle className="text-2xl text-emerald-600 dark:text-emerald-400" />
+                  <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                    <FiCheckCircle className="text-2xl text-primary-600 dark:text-primary-400" />
                   </div>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">Hours Today</p>
@@ -93,12 +118,12 @@ const NurseAttendance = () => {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-purple-100 dark:border-purple-900 overflow-hidden hover:shadow-md transition-all">
-              <div className="h-1 bg-gradient-to-r from-purple-500 to-purple-600"></div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-primary-100 dark:border-primary-900 overflow-hidden hover:shadow-md transition-all">
+              <div className="h-1 bg-gradient-to-r from-primary-500 to-primary-600"></div>
               <div className="p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                    <FiCalendar className="text-2xl text-purple-600 dark:text-purple-400" />
+                  <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                    <FiCalendar className="text-2xl text-primary-600 dark:text-primary-400" />
                   </div>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">This Month</p>
@@ -110,15 +135,15 @@ const NurseAttendance = () => {
           </div>
 
           {/* Check In/Out Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900 overflow-hidden mb-6">
-            <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-primary-100 dark:border-primary-900 overflow-hidden mb-6">
+            <div className="h-1 bg-gradient-to-r from-primary-500 to-primary-600"></div>
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-5">Today's Attendance</h2>
               <div className="flex gap-4">
                 {!isCheckedIn ? (
                   <button
                     onClick={handleCheckIn}
-                    className="flex-1 bg-emerald-600 text-white py-3.5 px-6 rounded-lg hover:bg-emerald-700 font-semibold transition-all shadow-md hover:shadow-lg"
+                    className="flex-1 bg-primary-600 text-white py-3.5 px-6 rounded-lg hover:bg-primary-700 font-semibold transition-all shadow-md hover:shadow-lg"
                   >
                     ✓ Check In
                   </button>
@@ -132,14 +157,14 @@ const NurseAttendance = () => {
                 )}
                 <button
                   onClick={() => setShowLeaveModal(true)}
-                  className="flex-1 bg-blue-600 text-white py-3.5 px-6 rounded-lg hover:bg-blue-700 font-semibold transition-all shadow-md hover:shadow-lg"
+                  className="flex-1 bg-primary-600 text-white py-3.5 px-6 rounded-lg hover:bg-primary-700 font-semibold transition-all shadow-md hover:shadow-lg"
                 >
                   📝 Apply for Leave
                 </button>
               </div>
               {isCheckedIn && checkInTime && (
-                <div className="mt-5 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                  <p className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                <div className="mt-5 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+                  <p className="text-primary-700 dark:text-primary-300 font-semibold">
                     ✓ Checked in at {checkInTime.toLocaleTimeString()}
                   </p>
                 </div>
@@ -148,21 +173,21 @@ const NurseAttendance = () => {
           </div>
 
           {/* Monthly Attendance */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900 overflow-hidden mb-6">
-            <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-primary-100 dark:border-primary-900 overflow-hidden mb-6">
+            <div className="h-1 bg-gradient-to-r from-primary-500 to-primary-600"></div>
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-5">Monthly Summary</h2>
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border-2 border-emerald-200 dark:border-emerald-800 hover:shadow-md transition-all">
-                  <p className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">{attendanceData.thisMonth.present}</p>
+                <div className="text-center p-6 bg-primary-50 dark:bg-primary-900/20 rounded-xl border-2 border-primary-200 dark:border-primary-800 hover:shadow-md transition-all">
+                  <p className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">{attendanceData.thisMonth.present}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold">Present</p>
                 </div>
                 <div className="text-center p-6 bg-red-50 dark:bg-red-900/20 rounded-xl border-2 border-red-200 dark:border-red-800 hover:shadow-md transition-all">
                   <p className="text-4xl font-bold text-red-600 dark:text-red-400 mb-2">{attendanceData.thisMonth.absent}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold">Absent</p>
                 </div>
-                <div className="text-center p-6 bg-amber-50 dark:bg-amber-900/20 rounded-xl border-2 border-amber-200 dark:border-amber-800 hover:shadow-md transition-all">
-                  <p className="text-4xl font-bold text-amber-600 dark:text-amber-400 mb-2">{attendanceData.thisMonth.leaves}</p>
+                <div className="text-center p-6 bg-primary-50 dark:bg-primary-900/20 rounded-xl border-2 border-primary-200 dark:border-primary-800 hover:shadow-md transition-all">
+                  <p className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">{attendanceData.thisMonth.leaves}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold">Leaves</p>
                 </div>
               </div>
@@ -170,26 +195,26 @@ const NurseAttendance = () => {
           </div>
 
           {/* Shift Schedule */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-primary-100 dark:border-primary-900 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-primary-500 to-primary-600"></div>
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-5">Shift Schedule</h2>
               <div className="space-y-3">
                 {[
-                  { day: 'Monday', shift: 'Morning (8 AM - 4 PM)', status: 'Completed' },
-                  { day: 'Tuesday', shift: 'Morning (8 AM - 4 PM)', status: 'Completed' },
-                  { day: 'Wednesday', shift: 'Morning (8 AM - 4 PM)', status: 'In Progress' },
-                  { day: 'Thursday', shift: 'Morning (8 AM - 4 PM)', status: 'Scheduled' },
-                  { day: 'Friday', shift: 'Morning (8 AM - 4 PM)', status: 'Scheduled' }
+                  { day: 'Monday', shift: nurseData?.shiftTiming ? `${nurseData.shiftTiming.charAt(0).toUpperCase() + nurseData.shiftTiming.slice(1)} (${nurseData.currentShift?.start || '8 AM'} - ${nurseData.currentShift?.end || '4 PM'})` : 'Morning (8 AM - 4 PM)', status: 'Completed' },
+                  { day: 'Tuesday', shift: nurseData?.shiftTiming ? `${nurseData.shiftTiming.charAt(0).toUpperCase() + nurseData.shiftTiming.slice(1)} (${nurseData.currentShift?.start || '8 AM'} - ${nurseData.currentShift?.end || '4 PM'})` : 'Morning (8 AM - 4 PM)', status: 'Completed' },
+                  { day: 'Wednesday', shift: nurseData?.shiftTiming ? `${nurseData.shiftTiming.charAt(0).toUpperCase() + nurseData.shiftTiming.slice(1)} (${nurseData.currentShift?.start || '8 AM'} - ${nurseData.currentShift?.end || '4 PM'})` : 'Morning (8 AM - 4 PM)', status: 'In Progress' },
+                  { day: 'Thursday', shift: nurseData?.shiftTiming ? `${nurseData.shiftTiming.charAt(0).toUpperCase() + nurseData.shiftTiming.slice(1)} (${nurseData.currentShift?.start || '8 AM'} - ${nurseData.currentShift?.end || '4 PM'})` : 'Morning (8 AM - 4 PM)', status: 'Scheduled' },
+                  { day: 'Friday', shift: nurseData?.shiftTiming ? `${nurseData.shiftTiming.charAt(0).toUpperCase() + nurseData.shiftTiming.slice(1)} (${nurseData.currentShift?.start || '8 AM'} - ${nurseData.currentShift?.end || '4 PM'})` : 'Morning (8 AM - 4 PM)', status: 'Scheduled' }
                 ].map((item, index) => (
-                  <div key={index} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-700 transition-all">
+                  <div key={index} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-primary-300 dark:hover:border-primary-700 transition-all">
                     <div>
                       <p className="font-semibold text-gray-900 dark:text-white">{item.day}</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{item.shift}</p>
                     </div>
                     <span className={`px-4 py-1.5 rounded-full text-xs font-semibold ${
-                      item.status === 'Completed' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' :
-                      item.status === 'In Progress' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+                      item.status === 'Completed' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' :
+                      item.status === 'In Progress' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' :
                       'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                     }`}>
                       {item.status}

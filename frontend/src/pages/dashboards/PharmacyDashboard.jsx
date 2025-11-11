@@ -25,16 +25,12 @@ const PharmacyDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [medicinesRes, prescriptionsRes] = await Promise.all([
-        api.get('/api/pharmacy/medicines'),
-        api.get('/api/pharmacy/prescriptions')
-      ]);
-
+      // Only fetch medicines since prescriptions endpoint doesn't exist
+      const medicinesRes = await api.get('/pharmacy/medicines');
       const allMedicines = medicinesRes.data.data || [];
-      const allPrescriptions = prescriptionsRes.data.data || [];
 
       setMedicines(allMedicines);
-      setPrescriptions(allPrescriptions);
+      setPrescriptions([]); // No prescriptions endpoint available
 
       const lowStock = allMedicines.filter(m => m.stock?.quantity <= m.stock?.reorderLevel).length;
       const expiringSoon = allMedicines.filter(m => {
@@ -59,7 +55,7 @@ const PharmacyDashboard = () => {
   };
 
   const medicineColumns = [
-    { header: 'Medicine Name', accessor: 'name', render: (row) => <span className="font-medium text-sky-400">{row.name}</span> },
+    { header: 'Medicine Name', accessor: 'name', render: (row) => <span className="font-medium text-sky-600 dark:text-sky-400">{row.name}</span> },
     { header: 'Generic', accessor: 'genericName' },
     { header: 'Category', accessor: 'category' },
     { header: 'Stock', accessor: 'stock', render: (row) => {
@@ -71,12 +67,12 @@ const PharmacyDashboard = () => {
     { header: 'Expiry', accessor: 'expiryDate', render: (row) => {
       const expiryDate = new Date(row.expiryDate);
       const isExpiring = expiryDate <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-      return <span className={isExpiring ? 'text-orange-600 dark:text-orange-400 font-semibold' : ''}>{expiryDate.toLocaleDateString()}</span>;
+      return <span className={isExpiring ? 'text-orange-600 dark:text-orange-400 font-semibold' : 'text-gray-900 dark:text-white'}>{expiryDate.toLocaleDateString()}</span>;
     }}
   ];
 
   const prescriptionColumns = [
-    { header: 'Prescription ID', accessor: 'prescriptionId', render: (row) => <span className="font-medium text-sky-400">{row.prescriptionId}</span> },
+    { header: 'Prescription ID', accessor: 'prescriptionId', render: (row) => <span className="font-medium text-sky-600 dark:text-sky-400">{row.prescriptionId}</span> },
     { header: 'Patient', accessor: 'patient', render: (row) => row.patient?.user ? `${row.patient.user.firstName} ${row.patient.user.lastName}` : 'N/A' },
     { header: 'Doctor', accessor: 'doctor', render: (row) => row.doctor?.user ? `Dr. ${row.doctor.user.firstName} ${row.doctor.user.lastName}` : 'N/A' },
     { header: 'Medicines', accessor: 'medicines', render: (row) => row.medicines?.length || 0 },
@@ -95,12 +91,12 @@ const PharmacyDashboard = () => {
   return (
     <>
       <Navbar />
-      <div className="flex min-h-screen bg-gray-900">
+      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
         <Sidebar role="pharmacy" />
-        <div className="flex-1 ml-64 mt-16">
-          <div className="p-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Pharmacy Dashboard</h1>
-            <p className="text-sky-400 mb-8">Manage medicines and inventory</p>
+        <div className="flex-1 ml-64 mt-16 overflow-x-hidden">
+          <div className="p-8 max-w-full">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Pharmacy Dashboard</h1>
+            <p className="text-sky-600 dark:text-sky-400 mb-8">Manage medicines and inventory</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard title="Total Medicines" value={stats.totalMedicines} icon={FiPackage} color="blue" />
@@ -111,33 +107,32 @@ const PharmacyDashboard = () => {
 
             {loading ? (
               <div className="text-center py-12">
-                <p className="text-gray-400">Loading...</p>
+                <p className="text-gray-600 dark:text-gray-400">Loading...</p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-6 overflow-hidden">
                 <Card>
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">Low Stock Medicines ({lowStockMedicines.length})</h2>
-                    <button onClick={() => toast.info('Navigate to inventory management')} className="text-sky-400 hover:underline text-sm font-medium">
+                    <button onClick={() => toast.info('Navigate to inventory management')} className="text-sky-600 dark:text-sky-400 hover:underline text-sm font-medium">
                       View All →
                     </button>
                   </div>
-                  {lowStockMedicines.length > 0 ? <Table columns={medicineColumns} data={lowStockMedicines} /> : <p className="text-gray-500 dark:text-gray-400 text-center py-8">No low stock medicines</p>}
+                  <div className="overflow-x-auto -mx-6 px-6">
+                    {lowStockMedicines.length > 0 ? <Table columns={medicineColumns} data={lowStockMedicines} /> : <p className="text-gray-600 dark:text-gray-400 text-center py-8">No low stock medicines</p>}
+                  </div>
                 </Card>
 
                 <Card>
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-semibold text-orange-600 dark:text-orange-400">Expiring Soon ({expiringMedicines.length})</h2>
-                    <button onClick={() => toast.info('Navigate to inventory management')} className="text-sky-400 hover:underline text-sm font-medium">
+                    <button onClick={() => toast.info('Navigate to inventory management')} className="text-sky-600 dark:text-sky-400 hover:underline text-sm font-medium">
                       View All →
                     </button>
                   </div>
-                  {expiringMedicines.length > 0 ? <Table columns={medicineColumns} data={expiringMedicines} /> : <p className="text-gray-500 dark:text-gray-400 text-center py-8">No expiring medicines</p>}
-                </Card>
-
-                <Card>
-                  <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Recent Prescriptions</h2>
-                  {prescriptions.length > 0 ? <Table columns={prescriptionColumns} data={prescriptions.slice(0, 10)} /> : <p className="text-gray-500 dark:text-gray-400 text-center py-8">No recent prescriptions</p>}
+                  <div className="overflow-x-auto -mx-6 px-6">
+                    {expiringMedicines.length > 0 ? <Table columns={medicineColumns} data={expiringMedicines} /> : <p className="text-gray-600 dark:text-gray-400 text-center py-8">No expiring medicines</p>}
+                  </div>
                 </Card>
               </div>
             )}

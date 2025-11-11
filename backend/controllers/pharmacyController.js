@@ -1,6 +1,7 @@
 import Medicine from '../models/Medicine.js';
 import Prescription from '../models/Prescription.js';
-import { generateMedicineId } from '../utils/idGenerator.js';
+import Billing from '../models/Billing.js';
+import { generateMedicineId, generateBillId } from '../utils/idGenerator.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // @desc    Get all medicines
@@ -111,7 +112,8 @@ export const deleteMedicine = asyncHandler(async (req, res) => {
 export const dispenseMedicine = asyncHandler(async (req, res) => {
   const { prescriptionId, medicines } = req.body;
 
-  const prescription = await Prescription.findById(prescriptionId);
+  const prescription = await Prescription.findById(prescriptionId)
+    .populate('patient');
 
   if (!prescription) {
     return res.status(404).json({
@@ -127,29 +129,80 @@ export const dispenseMedicine = asyncHandler(async (req, res) => {
     });
   }
 
-  // Update medicine stock
-  for (const item of medicines) {
-    const medicine = await Medicine.findById(item.medicineId);
+  // Prepare billing items and update medicine stock
+  const billingItems = [];
+  let subtotal = 0;
+
+  for (const prescribedMedicine of prescription.medicines) {
+    // Find the medicine in inventory by name
+    const medicine = await Medicine.findOne({ 
+      name: { $regex: new RegExp(prescribedMedicine.medicineName, 'i') }
+    });
     
     if (!medicine) {
       return res.status(404).json({
         success: false,
-        message: `Medicine ${item.medicineName} not found`
+        message: `Medicine "${prescribedMedicine.medicineName}" not found in inventory`
       });
     }
 
-    if (medicine.stock.quantity < item.quantity) {
+    const quantity = prescribedMedicine.quantity || 1;
+
+    if (medicine.stock.quantity < quantity) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient stock for ${medicine.name}`
+        message: `Insufficient stock for ${medicine.name}. Available: ${medicine.stock.quantity}, Required: ${quantity}`
       });
     }
 
-    medicine.stock.quantity -= item.quantity;
-    medicine.totalDispensed += item.quantity;
+    const unitPrice = medicine.price?.sellingPrice || 0;
+    const totalPrice = unitPrice * quantity;
+
+    // Add to billing items
+    billingItems.push({
+      itemType: 'medicine',
+      description: `${medicine.name} - ${prescribedMedicine.dosage} (${prescribedMedicine.frequency} for ${prescribedMedicine.duration})`,
+      quantity: quantity,
+      unitPrice: unitPrice,
+      totalPrice: totalPrice,
+      date: new Date()
+    });
+
+    subtotal += totalPrice;
+
+    // Update medicine stock
+    medicine.stock.quantity -= quantity;
+    medicine.totalDispensed = (medicine.totalDispensed || 0) + quantity;
     await medicine.save();
   }
 
+  // Calculate tax (9% CGST + 9% SGST = 18% total)
+  const cgst = subtotal * 0.09;
+  const sgst = subtotal * 0.09;
+  const totalAmount = subtotal + cgst + sgst;
+
+  // Create billing record
+  const billing = await Billing.create({
+    billId: generateBillId(),
+    patient: prescription.patient._id,
+    billType: 'Pharmacy',
+    billDate: new Date(),
+    items: billingItems,
+    subtotal: subtotal,
+    tax: {
+      cgst: cgst,
+      sgst: sgst,
+      igst: 0
+    },
+    totalAmount: totalAmount,
+    amountPaid: 0,
+    balanceAmount: totalAmount,
+    paymentStatus: 'pending',
+    paymentMethod: 'cash',
+    generatedBy: req.user._id
+  });
+
+  // Update prescription
   prescription.isDispensed = true;
   prescription.dispensedBy = req.user._id;
   prescription.dispensedAt = new Date();
@@ -157,8 +210,11 @@ export const dispenseMedicine = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Medicines dispensed successfully',
-    data: prescription
+    message: 'Medicines dispensed successfully and bill generated',
+    data: {
+      prescription,
+      billing
+    }
   });
 });
 
@@ -257,5 +313,54 @@ export const getStockAlerts = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: alerts
+  });
+});
+
+// @desc    Get all prescriptions
+// @route   GET /api/pharmacy/prescriptions
+// @access  Private (Pharmacy, Admin)
+export const getAllPrescriptions = asyncHandler(async (req, res) => {
+  const prescriptions = await Prescription.find()
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone' }
+    })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: prescriptions.length,
+    data: prescriptions
+  });
+});
+
+// @desc    Get single prescription
+// @route   GET /api/pharmacy/prescriptions/:id
+// @access  Private (Pharmacy, Admin)
+export const getPrescription = asyncHandler(async (req, res) => {
+  const prescription = await Prescription.findById(req.params.id)
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone' }
+    })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    });
+
+  if (!prescription) {
+    return res.status(404).json({
+      success: false,
+      message: 'Prescription not found'
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: prescription
   });
 });

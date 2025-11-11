@@ -343,6 +343,50 @@ export const updateUser = asyncHandler(async (req, res) => {
     });
   }
 
+  // If updating a nurse, also update nurse-specific fields
+  if (user.role === 'nurse' && req.body.nurseInfo) {
+    console.log('Updating nurse with data:', req.body.nurseInfo);
+    const nurse = await Nurse.findOne({ user: user._id });
+    if (nurse) {
+      console.log('Found nurse:', nurse._id);
+      const { department, shift, assignedDoctor } = req.body.nurseInfo;
+      
+      if (department) nurse.department = department;
+      if (shift) {
+        console.log('Updating shift to:', shift);
+        nurse.shiftTiming = shift;
+        // Set shift times based on shift type
+        switch(shift) {
+          case 'morning':
+            nurse.currentShift = { start: '8 AM', end: '4 PM' };
+            break;
+          case 'evening':
+            nurse.currentShift = { start: '4 PM', end: '12 AM' };
+            break;
+          case 'night':
+            nurse.currentShift = { start: '12 AM', end: '8 AM' };
+            break;
+        }
+        console.log('New shift timing:', nurse.shiftTiming, 'Current shift:', nurse.currentShift);
+      }
+      await nurse.save();
+      console.log('Nurse updated successfully');
+    } else {
+      console.log('No nurse found for user:', user._id);
+    }
+  }
+
+  // If updating a doctor, also update doctor-specific fields
+  if (user.role === 'doctor' && req.body.doctorInfo) {
+    const doctor = await Doctor.findOne({ user: user._id });
+    if (doctor) {
+      const { department, specialization } = req.body.doctorInfo;
+      if (department) doctor.department = department;
+      if (specialization) doctor.specialization = specialization;
+      await doctor.save();
+    }
+  }
+
   res.status(200).json({
     success: true,
     message: 'User updated successfully',

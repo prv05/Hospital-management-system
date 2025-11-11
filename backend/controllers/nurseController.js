@@ -270,7 +270,20 @@ export const updatePatientObservations = asyncHandler(async (req, res) => {
 // @route   GET /api/nurse/beds
 // @access  Private (Nurse)
 export const getAllBeds = asyncHandler(async (req, res) => {
-  const beds = await Bed.find()
+  // Get nurse's assigned ward
+  const nurse = await Nurse.findOne({ user: req.user._id });
+  
+  if (!nurse) {
+    return res.status(404).json({
+      success: false,
+      message: 'Nurse profile not found'
+    });
+  }
+
+  // Build query - if nurse has assigned ward, filter by it
+  const query = nurse.assignedWard ? { wardNumber: nurse.assignedWard } : {};
+
+  const beds = await Bed.find(query)
     .populate({
       path: 'currentPatient',
       populate: {
@@ -291,7 +304,8 @@ export const getAllBeds = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     count: beds.length,
-    data: beds
+    data: beds,
+    ward: nurse.assignedWard
   });
 });
 

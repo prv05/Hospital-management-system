@@ -51,7 +51,7 @@ const BedManagement = () => {
     const colors = {
       vacant: 'bg-emerald-500',
       available: 'bg-emerald-500',
-      occupied: 'bg-blue-500',
+      occupied: 'bg-primary-500',
       maintenance: 'bg-amber-500'
     };
     return colors[status] || 'bg-gray-500';
@@ -69,7 +69,7 @@ const BedManagement = () => {
             </h1>
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                <div className="w-3 h-3 rounded-full bg-primary-500"></div>
                 <span className="text-gray-600 dark:text-gray-400">Occupied</span>
               </div>
               <div className="flex items-center gap-2">
@@ -116,7 +116,7 @@ const BedManagement = () => {
                   {patient ? (
                     <>
                       {/* Patient Info */}
-                      <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                      <div className="mb-4 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800">
                         <p className="font-semibold text-gray-900 dark:text-white text-base mb-3">
                           {patientUser?.firstName || 'Unknown'} {patientUser?.lastName || ''}
                         </p>
@@ -146,7 +146,7 @@ const BedManagement = () => {
                       {/* Discharge Button */}
                       <button
                         onClick={() => handleDischargeClick(bed)}
-                        className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+                        className="w-full bg-primary-600 text-white py-2.5 px-4 rounded-lg hover:bg-primary-700 text-sm font-medium transition-colors"
                       >
                         Discharge Patient
                       </button>

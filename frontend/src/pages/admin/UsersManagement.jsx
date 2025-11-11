@@ -194,8 +194,10 @@ const UsersManagement = () => {
 
       // Add role-specific data
       if (formData.role === 'doctor' && formData.department) {
-        submitData.department = formData.department;
-        submitData.specialization = formData.specialization;
+        submitData.doctorInfo = {
+          department: formData.department,
+          specialization: formData.specialization
+        };
         submitData.qualification = formData.qualification;
         submitData.experience = formData.experience;
         submitData.licenseNumber = formData.licenseNumber;
@@ -203,9 +205,11 @@ const UsersManagement = () => {
       }
 
       if (formData.role === 'nurse') {
-        if (formData.department) submitData.department = formData.department;
-        if (formData.assignedDoctor) submitData.assignedDoctor = formData.assignedDoctor;
-        submitData.shift = formData.shift;
+        submitData.nurseInfo = {
+          department: formData.department,
+          shift: formData.shift,
+          assignedDoctor: formData.assignedDoctor
+        };
       }
 
       if (isEditMode) {

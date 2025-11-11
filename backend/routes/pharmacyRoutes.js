@@ -8,7 +8,9 @@ import {
   dispenseMedicine,
   updateStock,
   getPharmacyAnalytics,
-  getStockAlerts
+  getStockAlerts,
+  getAllPrescriptions,
+  getPrescription
 } from '../controllers/pharmacyController.js';
 
 const router = express.Router();
@@ -24,5 +26,7 @@ router.post('/dispense', dispenseMedicine);
 router.patch('/medicines/:id/stock', updateStock);
 router.get('/analytics', getPharmacyAnalytics);
 router.get('/alerts', getStockAlerts);
+router.get('/prescriptions', getAllPrescriptions);
+router.get('/prescriptions/:id', getPrescription);
 
 export default router;

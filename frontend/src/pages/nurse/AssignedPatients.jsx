@@ -83,8 +83,8 @@ const AssignedPatients = () => {
             <p className="text-gray-500">No patients assigned</p>
           ) : (
             <div className="space-y-4">
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
-                <p className="text-blue-700 dark:text-blue-300 text-sm">
+              <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-4 mb-6">
+                <p className="text-primary-700 dark:text-primary-300 text-sm">
                   ℹ These are admitted patients. Outpatients (consultation only) do not appear here.
                 </p>
               </div>
@@ -95,9 +95,9 @@ const AssignedPatients = () => {
                   const patientUser = patient?.user;
                   
                   return (
-                    <div key={assignment._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900 overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all">
-                      {/* Blue accent bar */}
-                      <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
+                    <div key={assignment._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-primary-100 dark:border-primary-900 overflow-hidden hover:shadow-lg hover:border-primary-300 transition-all">
+                      {/* Cyan blue accent bar */}
+                      <div className="h-1 bg-gradient-to-r from-primary-500 to-primary-600"></div>
                       
                       <div className="p-6">
                         {/* Patient Name */}
@@ -105,11 +105,11 @@ const AssignedPatients = () => {
                           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
                             {patientUser?.firstName} {patientUser?.lastName}
                           </h3>
-                          <div className="h-0.5 w-12 bg-blue-500 rounded"></div>
+                          <div className="h-0.5 w-12 bg-primary-500 rounded"></div>
                         </div>
                         
                         {/* Patient Info */}
-                        <div className="space-y-3 mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                        <div className="space-y-3 mb-6 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800">
                           <div className="flex items-center text-sm">
                             <span className="w-24 text-gray-600 dark:text-gray-400 font-medium">🛏️ Bed:</span>
                             <span className="text-gray-900 dark:text-white font-semibold">{assignment.bedNumber}</span>
@@ -126,7 +126,7 @@ const AssignedPatients = () => {
                         
                         <button 
                           onClick={() => handleRecordVitals(assignment)}
-                          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-medium transition-all shadow-sm hover:shadow-md"
+                          className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 font-medium transition-all shadow-sm hover:shadow-md"
                         >
                           📊 Record Vitals
                         </button>
@@ -259,7 +259,7 @@ const AssignedPatients = () => {
                   <textarea
                     value={vitalsData.notes}
                     onChange={(e) => setVitalsData({...vitalsData, notes: e.target.value})}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all"
                     rows="3"
                     placeholder="Any observations or notes..."
                   />
@@ -268,7 +268,7 @@ const AssignedPatients = () => {
                 <div className="flex gap-3 pt-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-semibold transition-all shadow-md hover:shadow-lg"
+                    className="flex-1 bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 font-semibold transition-all shadow-md hover:shadow-lg"
                   >
                     💾 Save Vitals
                   </button>
