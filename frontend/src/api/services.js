@@ -24,6 +24,19 @@ export const doctorAPI = {
   addSurgeryRecord: (id, data) => api.post(`/doctors/patients/${id}/surgeries`, data),
   addVaccinationRecord: (id, data) => api.post(`/doctors/patients/${id}/vaccinations`, data),
   addPrescription: (id, data) => api.post(`/doctors/patients/${id}/prescriptions`, data),
+  // New APIs for adding and admitting patients
+  addNewPatient: (data) => api.post('/doctors/patients', data),
+  admitPatient: (data) => api.post('/doctors/admissions', data),
+  getAvailableBeds: (params) => api.get('/doctors/beds/available', { params }),
+  // Lab test APIs
+  orderLabTest: (patientId, data) => api.post(`/doctors/patients/${patientId}/lab-tests`, data),
+  getDoctorLabTests: (params) => api.get('/doctors/lab-tests', { params }),
+  getLabTestDetails: (id) => api.get(`/doctors/lab-tests/${id}`),
+  getPatientLabTests: (patientId) => api.get(`/doctors/patients/${patientId}/lab-tests`),
+  // Prescription APIs
+  getDoctorPrescriptions: (params) => api.get('/doctors/prescriptions', { params }),
+  getPrescriptionDetails: (id) => api.get(`/doctors/prescriptions/${id}`),
+  getPatientPrescriptions: (patientId) => api.get(`/doctors/patients/${patientId}/prescriptions`),
 };
 
 // Patient APIs

@@ -87,6 +87,14 @@ const patientSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Billing'
   }],
+  primaryDoctor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Doctor'
+  },
+  treatingDoctors: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Doctor'
+  }],
   height: Number, // in cm
   weight: Number, // in kg
   registrationDate: {

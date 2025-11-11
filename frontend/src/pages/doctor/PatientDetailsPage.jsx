@@ -4,7 +4,7 @@ import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
 import { doctorAPI } from '../../api/services';
 import toast from 'react-hot-toast';
-import { FiEdit, FiPlus, FiSave, FiX } from 'react-icons/fi';
+import { FiEdit, FiPlus, FiSave, FiX, FiClipboard } from 'react-icons/fi';
 
 const PatientDetailsPage = () => {
   const { id } = useParams();
@@ -50,9 +50,40 @@ const PatientDetailsPage = () => {
     followUpDate: ''
   });
 
+  const [labTestForm, setLabTestForm] = useState({
+    testName: '',
+    testCategory: '',
+    urgency: 'routine',
+    notes: '',
+    cost: ''
+  });
+
+  const [patientLabTests, setPatientLabTests] = useState([]);
+  const [patientPrescriptions, setPatientPrescriptions] = useState([]);
+
   useEffect(() => {
     fetchPatientDetails();
+    fetchPatientLabTests();
+    fetchPatientPrescriptions();
   }, [id]);
+
+  const fetchPatientLabTests = async () => {
+    try {
+      const response = await doctorAPI.getPatientLabTests(id);
+      setPatientLabTests(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching lab tests:', error);
+    }
+  };
+
+  const fetchPatientPrescriptions = async () => {
+    try {
+      const response = await doctorAPI.getPatientPrescriptions(id);
+      setPatientPrescriptions(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching prescriptions:', error);
+    }
+  };
 
   const fetchPatientDetails = async () => {
     try {
@@ -188,8 +219,32 @@ const PatientDetailsPage = () => {
         followUpDate: ''
       });
       fetchPatientDetails();
+      fetchPatientPrescriptions();
     } catch (error) {
       toast.error('Failed to add prescription');
+      console.error(error);
+    }
+  };
+
+  const handleOrderLabTest = async () => {
+    try {
+      if (!labTestForm.testName || !labTestForm.testCategory || !labTestForm.cost) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+      
+      await doctorAPI.orderLabTest(id, labTestForm);
+      toast.success('Lab test ordered successfully');
+      setLabTestForm({
+        testName: '',
+        testCategory: '',
+        urgency: 'routine',
+        notes: '',
+        cost: ''
+      });
+      fetchPatientLabTests();
+    } catch (error) {
+      toast.error('Failed to order lab test');
       console.error(error);
     }
   };
@@ -240,7 +295,7 @@ const PatientDetailsPage = () => {
 
           {/* Tabs */}
           <div className="flex space-x-4 border-b border-gray-200 dark:border-gray-700 mb-6">
-            {['overview', 'vitals', 'medical-history', 'surgeries', 'vaccinations', 'prescriptions'].map(tab => (
+            {['overview', 'vitals', 'medical-history', 'surgeries', 'vaccinations', 'prescriptions', 'lab-tests'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -887,14 +942,303 @@ const PatientDetailsPage = () => {
                 </button>
               </div>
 
-              {/* Prescription List */}
-              {patient.prescriptions?.length > 0 ? (
-                <div className="space-y-4">
-                  <p className="text-gray-500">Prescription history will be displayed here</p>
+              {/* Prescription History Section */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-600 pb-2">
+                  Prescription History
+                </h3>
+                
+                {/* Prescription List */}
+                {patientPrescriptions.length > 0 ? (
+                  <div className="space-y-4">
+                    {patientPrescriptions.map((prescription) => (
+                      <div 
+                        key={prescription._id} 
+                        className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
+                      >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {prescription.prescriptionId}
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(prescription.createdAt || prescription.date).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          prescription.status === 'active' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
+                        }`}>
+                          {prescription.status || 'Active'}
+                        </span>
+                      </div>
+
+                      {/* Diagnosis */}
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Diagnosis</h4>
+                        <p className="text-gray-900 dark:text-white">{prescription.diagnosis}</p>
+                      </div>
+
+                      {/* Medicines */}
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Medications</h4>
+                        <div className="space-y-2">
+                          {prescription.medicines.map((medicine, index) => (
+                            <div 
+                              key={index}
+                              className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-600"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900 dark:text-white">
+                                    {medicine.medicineName || medicine.medicineId?.name || medicine.name || 'Medicine'}
+                                  </p>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    <span className="inline-block mr-4">
+                                      <span className="font-medium">Dosage:</span> {medicine.dosage}
+                                    </span>
+                                    <span className="inline-block mr-4">
+                                      <span className="font-medium">Frequency:</span> {medicine.frequency}
+                                    </span>
+                                    <span className="inline-block">
+                                      <span className="font-medium">Duration:</span> {medicine.duration}
+                                    </span>
+                                  </div>
+                                  {medicine.instructions && (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                      <span className="font-medium">Instructions:</span> {medicine.instructions}
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="ml-4 px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 text-xs rounded">
+                                  {medicine.quantity}x
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Notes */}
+                      {prescription.notes && (
+                        <div className="mb-4">
+                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Notes</h4>
+                          <p className="text-gray-900 dark:text-white">{prescription.notes}</p>
+                        </div>
+                      )}
+
+                      {/* Doctor Info */}
+                      {prescription.doctor && (
+                        <div className="pt-4 border-t border-gray-200 dark:border-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Prescribed by: <span className="font-medium text-gray-900 dark:text-white">
+                              Dr. {prescription.doctor.user?.firstName || prescription.doctor.firstName} {prescription.doctor.user?.lastName || prescription.doctor.lastName}
+                            </span>
+                            {prescription.doctor.department && (
+                              <span className="ml-2">
+                                ({prescription.doctor.department.name})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <p className="text-gray-500">No prescriptions</p>
+                <div className="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                  <FiClipboard className="mx-auto text-gray-400 text-4xl mb-2" />
+                  <p className="text-gray-500 dark:text-gray-400">No prescriptions found for this patient</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Add a prescription using the form above</p>
+                </div>
               )}
+              </div>
+            </div>
+          )}
+
+          {/* Lab Tests Tab */}
+          {activeTab === 'lab-tests' && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Lab Tests</h2>
+              
+              {/* Order New Lab Test Form */}
+              <div className="bg-primary-50 dark:bg-primary-900/20 p-6 rounded-lg mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order New Lab Test</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Test Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={labTestForm.testName}
+                      onChange={(e) => setLabTestForm({ ...labTestForm, testName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="e.g., Complete Blood Count"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Category *
+                    </label>
+                    <select
+                      value={labTestForm.testCategory}
+                      onChange={(e) => setLabTestForm({ ...labTestForm, testCategory: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="">Select Category</option>
+                      <option value="Blood">Blood Test</option>
+                      <option value="Urine">Urine Test</option>
+                      <option value="Stool">Stool Test</option>
+                      <option value="Radiology">Radiology</option>
+                      <option value="ECG">ECG</option>
+                      <option value="Ultrasound">Ultrasound</option>
+                      <option value="CT Scan">CT Scan</option>
+                      <option value="MRI">MRI</option>
+                      <option value="X-Ray">X-Ray</option>
+                      <option value="Biopsy">Biopsy</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Urgency *
+                    </label>
+                    <select
+                      value={labTestForm.urgency}
+                      onChange={(e) => setLabTestForm({ ...labTestForm, urgency: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="routine">Routine</option>
+                      <option value="urgent">Urgent</option>
+                      <option value="stat">STAT (Immediate)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Cost (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      value={labTestForm.cost}
+                      onChange={(e) => setLabTestForm({ ...labTestForm, cost: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Clinical Notes
+                    </label>
+                    <textarea
+                      value={labTestForm.notes}
+                      onChange={(e) => setLabTestForm({ ...labTestForm, notes: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Additional instructions or clinical notes..."
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={handleOrderLabTest}
+                    className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    <FiPlus /> Order Lab Test
+                  </button>
+                </div>
+              </div>
+
+              {/* Lab Tests History */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Test History</h3>
+                {patientLabTests.length > 0 ? (
+                  <div className="space-y-4">
+                    {patientLabTests.map((test) => (
+                      <div
+                        key={test._id}
+                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-colors"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{test.testName}</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{test.testCategory}</p>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              test.status === 'completed'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                : test.status === 'in-process'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            }`}
+                          >
+                            {test.status.replace('-', ' ').toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600 dark:text-gray-400">Test ID:</span>
+                            <span className="ml-2 font-medium text-gray-900 dark:text-white">{test.testId}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 dark:text-gray-400">Urgency:</span>
+                            <span className={`ml-2 font-medium uppercase ${
+                              test.urgency === 'stat' ? 'text-red-600 dark:text-red-400' :
+                              test.urgency === 'urgent' ? 'text-orange-600 dark:text-orange-400' :
+                              'text-gray-900 dark:text-white'
+                            }`}>
+                              {test.urgency}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 dark:text-gray-400">Ordered:</span>
+                            <span className="ml-2 text-gray-900 dark:text-white">
+                              {new Date(test.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 dark:text-gray-400">Cost:</span>
+                            <span className="ml-2 font-medium text-gray-900 dark:text-white">₹{test.cost}</span>
+                          </div>
+                        </div>
+                        {test.notes && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              <span className="font-medium">Notes:</span> {test.notes}
+                            </p>
+                          </div>
+                        )}
+                        {test.results && test.results.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">Results:</p>
+                            <div className="space-y-1">
+                              {test.results.map((result, idx) => (
+                                <div key={idx} className="text-sm flex justify-between">
+                                  <span className="text-gray-600 dark:text-gray-400">{result.parameter}:</span>
+                                  <span className={`font-medium ${result.isAbnormal ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                                    {result.value} {result.unit}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">No lab tests ordered yet</p>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -904,3 +1248,4 @@ const PatientDetailsPage = () => {
 };
 
 export default PatientDetailsPage;
+

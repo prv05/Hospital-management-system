@@ -3,6 +3,11 @@ import Appointment from '../models/Appointment.js';
 import Patient from '../models/Patient.js';
 import Prescription from '../models/Prescription.js';
 import Admission from '../models/Admission.js';
+import User from '../models/User.js';
+import Bed from '../models/Bed.js';
+import Department from '../models/Department.js';
+import LabTest from '../models/LabTest.js';
+import { generatePatientId, generateAdmissionId, generateLabTestId } from '../utils/idGenerator.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // @desc    Get doctor dashboard stats
@@ -176,6 +181,20 @@ export const getPatientQueue = asyncHandler(async (req, res) => {
 export const getDoctorPatients = asyncHandler(async (req, res) => {
   const doctor = await Doctor.findOne({ user: req.user._id });
   
+  // Get patients where doctor is primary doctor or treating doctor
+  const directPatients = await Patient.find({
+    $or: [
+      { primaryDoctor: doctor._id },
+      { treatingDoctors: doctor._id }
+    ]
+  })
+    .populate('user', 'firstName lastName email phone dateOfBirth gender')
+    .populate({
+      path: 'primaryDoctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .sort({ createdAt: -1 });
+
   // Get unique patients who have appointments with this doctor
   const appointments = await Appointment.find({ doctor: doctor._id })
     .populate({
@@ -184,11 +203,21 @@ export const getDoctorPatients = asyncHandler(async (req, res) => {
     })
     .select('patient');
 
-  // Extract unique patients
+  // Extract unique patients from appointments
   const patientMap = new Map();
+  
+  // Add direct patients first
+  directPatients.forEach(patient => {
+    patientMap.set(patient._id.toString(), patient);
+  });
+  
+  // Add patients from appointments
   appointments.forEach(apt => {
     if (apt.patient && apt.patient._id) {
-      patientMap.set(apt.patient._id.toString(), apt.patient);
+      const patientId = apt.patient._id.toString();
+      if (!patientMap.has(patientId)) {
+        patientMap.set(patientId, apt.patient);
+      }
     }
   });
 
@@ -602,6 +631,19 @@ export const addPrescription = asyncHandler(async (req, res) => {
   });
 
   patient.prescriptions.push(prescription._id);
+  
+  // Set primary doctor if not set
+  if (!patient.primaryDoctor) {
+    patient.primaryDoctor = doctor._id;
+  }
+  
+  // Add doctor to treating doctors if not already there
+  if (!patient.treatingDoctors) {
+    patient.treatingDoctors = [doctor._id];
+  } else if (!patient.treatingDoctors.includes(doctor._id)) {
+    patient.treatingDoctors.push(doctor._id);
+  }
+  
   await patient.save();
 
   const populatedPrescription = await Prescription.findById(prescription._id)
@@ -619,3 +661,543 @@ export const addPrescription = asyncHandler(async (req, res) => {
     data: populatedPrescription
   });
 });
+
+// @desc    Add new patient (by doctor)
+// @route   POST /api/doctors/patients
+// @access  Private (Doctor)
+export const addNewPatient = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const {
+    email,
+    password,
+    firstName,
+    lastName,
+    phone,
+    dateOfBirth,
+    gender,
+    address,
+    bloodGroup,
+    emergencyContact,
+    allergies,
+    chronicDiseases,
+    medicalHistory
+  } = req.body;
+
+  // Check if user already exists
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return res.status(400).json({
+      success: false,
+      message: 'User with this email already exists'
+    });
+  }
+
+  // Create user account
+  const user = await User.create({
+    email,
+    password,
+    role: 'patient',
+    firstName,
+    lastName,
+    phone,
+    dateOfBirth,
+    gender,
+    address
+  });
+
+  // Create patient profile
+  const patient = await Patient.create({
+    user: user._id,
+    patientId: generatePatientId(),
+    bloodGroup,
+    emergencyContact,
+    allergies: allergies || [],
+    chronicDiseases: chronicDiseases || [],
+    medicalHistory: medicalHistory || [],
+    primaryDoctor: doctor._id,
+    treatingDoctors: [doctor._id],
+    registrationDate: new Date()
+  });
+
+  const populatedPatient = await Patient.findById(patient._id)
+    .populate('user', '-password')
+    .populate({
+      path: 'primaryDoctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    });
+
+  res.status(201).json({
+    success: true,
+    message: 'Patient added successfully',
+    data: populatedPatient
+  });
+});
+
+// @desc    Admit patient
+// @route   POST /api/doctors/admissions
+// @access  Private (Doctor)
+export const admitPatient = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const {
+    patientId,
+    bedId,
+    admissionType,
+    reasonForAdmission,
+    provisionalDiagnosis,
+    treatmentPlan,
+    admissionDate
+  } = req.body;
+
+  // Validate patient
+  const patient = await Patient.findById(patientId);
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient not found'
+    });
+  }
+
+  // Validate and check bed availability
+  const bed = await Bed.findById(bedId);
+  if (!bed) {
+    return res.status(404).json({
+      success: false,
+      message: 'Bed not found'
+    });
+  }
+
+  if (bed.status !== 'vacant') {
+    return res.status(400).json({
+      success: false,
+      message: `Bed ${bed.bedNumber} is not available. Current status: ${bed.status}`
+    });
+  }
+
+  // Create admission record
+  const admission = await Admission.create({
+    admissionId: generateAdmissionId(),
+    patient: patient._id,
+    doctor: doctor._id,
+    department: doctor.department,
+    bed: bed._id,
+    admissionType: admissionType || 'Scheduled',
+    admissionDate: admissionDate || new Date(),
+    reasonForAdmission,
+    provisionalDiagnosis,
+    treatmentPlan,
+    status: 'admitted'
+  });
+
+  // Update bed status
+  bed.status = 'occupied';
+  bed.currentPatient = patient._id;
+  bed.assignedDoctor = doctor._id;
+  await bed.save();
+
+  // Update patient record
+  patient.admissions.push(admission._id);
+  
+  // Set primary doctor if not set, or add to treating doctors
+  if (!patient.primaryDoctor) {
+    patient.primaryDoctor = doctor._id;
+  }
+  
+  // Add doctor to treating doctors if not already there
+  if (!patient.treatingDoctors.includes(doctor._id)) {
+    patient.treatingDoctors.push(doctor._id);
+  }
+  
+  await patient.save();
+
+  // Populate the admission data
+  const populatedAdmission = await Admission.findById(admission._id)
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone' }
+    })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .populate('department')
+    .populate('bed');
+
+  res.status(201).json({
+    success: true,
+    message: 'Patient admitted successfully',
+    data: populatedAdmission
+  });
+});
+
+// @desc    Get available beds
+// @route   GET /api/doctors/beds/available
+// @access  Private (Doctor)
+export const getAvailableBeds = asyncHandler(async (req, res) => {
+  const { wardType, floor } = req.query;
+
+  const query = { status: 'vacant' };
+  
+  if (wardType) {
+    query.wardType = wardType;
+  }
+  
+  if (floor) {
+    query.floor = parseInt(floor);
+  }
+
+  const beds = await Bed.find(query)
+    .populate('department')
+    .sort({ floor: 1, bedNumber: 1 });
+
+  res.status(200).json({
+    success: true,
+    count: beds.length,
+    data: beds
+  });
+});
+
+// @desc    Order lab test for patient
+// @route   POST /api/doctors/patients/:id/lab-tests
+// @access  Private (Doctor)
+export const orderLabTest = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const patient = await Patient.findById(req.params.id);
+  
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient not found'
+    });
+  }
+
+  const { testName, testCategory, urgency, notes, cost, appointment } = req.body;
+
+  // Create lab test order
+  const labTest = await LabTest.create({
+    testId: generateLabTestId(),
+    patient: patient._id,
+    doctor: doctor._id,
+    appointment: appointment || null,
+    testName,
+    testCategory,
+    urgency: urgency || 'routine',
+    notes,
+    cost,
+    status: 'requested'
+  });
+
+  // Add to patient's lab reports
+  patient.labReports.push(labTest._id);
+  
+  // Update treating doctors relationship
+  if (!patient.primaryDoctor) {
+    patient.primaryDoctor = doctor._id;
+  }
+  if (!patient.treatingDoctors || !patient.treatingDoctors.includes(doctor._id)) {
+    if (!patient.treatingDoctors) {
+      patient.treatingDoctors = [doctor._id];
+    } else {
+      patient.treatingDoctors.push(doctor._id);
+    }
+  }
+  
+  await patient.save();
+
+  const populatedLabTest = await LabTest.findById(labTest._id)
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone' }
+    })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    });
+
+  res.status(201).json({
+    success: true,
+    message: 'Lab test ordered successfully',
+    data: populatedLabTest
+  });
+});
+
+// @desc    Get lab tests ordered by doctor
+// @route   GET /api/doctors/lab-tests
+// @access  Private (Doctor)
+export const getDoctorLabTests = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const { status, patientId } = req.query;
+  
+  const query = { doctor: doctor._id };
+  
+  if (status) {
+    query.status = status;
+  }
+  
+  if (patientId) {
+    query.patient = patientId;
+  }
+
+  const labTests = await LabTest.find(query)
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone' }
+    })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .populate('appointment')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: labTests.length,
+    data: labTests
+  });
+});
+
+// @desc    Get specific lab test details
+// @route   GET /api/doctors/lab-tests/:id
+// @access  Private (Doctor)
+export const getLabTestDetails = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const labTest = await LabTest.findById(req.params.id)
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone dateOfBirth gender' }
+    })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .populate('appointment')
+    .populate('technician', 'firstName lastName')
+    .populate('sampleCollectedBy', 'firstName lastName');
+
+  if (!labTest) {
+    return res.status(404).json({
+      success: false,
+      message: 'Lab test not found'
+    });
+  }
+
+  // Verify doctor has access to this lab test
+  if (labTest.doctor._id.toString() !== doctor._id.toString()) {
+    return res.status(403).json({
+      success: false,
+      message: 'You do not have access to this lab test'
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: labTest
+  });
+});
+
+// @desc    Get patient's lab test history
+// @route   GET /api/doctors/patients/:id/lab-tests
+// @access  Private (Doctor)
+export const getPatientLabTests = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const patient = await Patient.findById(req.params.id);
+  
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient not found'
+    });
+  }
+
+  const labTests = await LabTest.find({ patient: patient._id })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: labTests.length,
+    data: labTests
+  });
+});
+
+// @desc    Get prescriptions written by doctor
+// @route   GET /api/doctors/prescriptions
+// @access  Private (Doctor)
+export const getDoctorPrescriptions = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const { patientId, status } = req.query;
+  
+  const query = { doctor: doctor._id };
+  
+  if (patientId) {
+    query.patient = patientId;
+  }
+
+  const prescriptions = await Prescription.find(query)
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone' }
+    })
+    .populate({
+      path: 'doctor',
+      populate: [
+        { path: 'user', select: 'firstName lastName' },
+        { path: 'department', select: 'name' }
+      ]
+    })
+    .populate('appointment')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: prescriptions.length,
+    data: prescriptions
+  });
+});
+
+// @desc    Get specific prescription details
+// @route   GET /api/doctors/prescriptions/:id
+// @access  Private (Doctor)
+export const getPrescriptionDetails = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const prescription = await Prescription.findById(req.params.id)
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone dateOfBirth gender' }
+    })
+    .populate({
+      path: 'doctor',
+      populate: [
+        { path: 'user', select: 'firstName lastName' },
+        { path: 'department', select: 'name' }
+      ]
+    })
+    .populate('appointment');
+
+  if (!prescription) {
+    return res.status(404).json({
+      success: false,
+      message: 'Prescription not found'
+    });
+  }
+
+  // Verify doctor has access to this prescription
+  if (prescription.doctor._id.toString() !== doctor._id.toString()) {
+    return res.status(403).json({
+      success: false,
+      message: 'You do not have access to this prescription'
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: prescription
+  });
+});
+
+// @desc    Get patient's prescription history
+// @route   GET /api/doctors/patients/:id/prescriptions
+// @access  Private (Doctor)
+export const getPatientPrescriptions = asyncHandler(async (req, res) => {
+  const doctor = await Doctor.findOne({ user: req.user._id });
+  
+  if (!doctor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Doctor profile not found'
+    });
+  }
+
+  const patient = await Patient.findById(req.params.id);
+  
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient not found'
+    });
+  }
+
+  const prescriptions = await Prescription.find({ patient: patient._id })
+    .populate({
+      path: 'doctor',
+      populate: [
+        { path: 'user', select: 'firstName lastName' },
+        { path: 'department', select: 'name' }
+      ]
+    })
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: prescriptions.length,
+    data: prescriptions
+  });
+});
+

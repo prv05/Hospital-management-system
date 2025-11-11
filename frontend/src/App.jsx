@@ -29,6 +29,10 @@ import PatientQueue from './pages/doctor/PatientQueue';
 import DoctorPatients from './pages/doctor/DoctorPatients';
 import DoctorAnalytics from './pages/doctor/DoctorAnalytics';
 import PatientDetailsPage from './pages/doctor/PatientDetailsPage';
+import AddPatient from './pages/doctor/AddPatient';
+import AdmitPatient from './pages/doctor/AdmitPatient';
+import DoctorLabTests from './pages/doctor/DoctorLabTests';
+import DoctorPrescriptions from './pages/doctor/DoctorPrescriptions';
 
 // Patient Pages
 import BookAppointmentPage from './pages/patient/BookAppointmentPage';
@@ -145,6 +149,38 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['doctor']}>
               <PatientDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/doctor/add-patient"
+          element={
+            <ProtectedRoute allowedRoles={['doctor']}>
+              <AddPatient />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/doctor/admit-patient"
+          element={
+            <ProtectedRoute allowedRoles={['doctor']}>
+              <AdmitPatient />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/doctor/lab-tests"
+          element={
+            <ProtectedRoute allowedRoles={['doctor']}>
+              <DoctorLabTests />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/doctor/prescriptions"
+          element={
+            <ProtectedRoute allowedRoles={['doctor']}>
+              <DoctorPrescriptions />
             </ProtectedRoute>
           }
         />
