@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { 
   FiHome, FiCalendar, FiUsers, FiActivity, FiFileText, 
-  FiPackage, FiDollarSign, FiSettings, FiBell, FiLogOut 
+  FiPackage, FiDollarSign, FiSettings, FiBell, FiLogOut, FiClipboard 
 } from 'react-icons/fi';
 import useAuthStore from '../store/authStore';
 
@@ -21,7 +21,9 @@ const Sidebar = ({ role }) => {
       { name: 'Book Appointment', path: '/patient/book', icon: FiCalendar },
       { name: 'My Appointments', path: '/patient/appointments', icon: FiCalendar },
       { name: 'Medical History', path: '/patient/history', icon: FiFileText },
-      { name: 'Billing', path: '/patient/billing', icon: FiDollarSign },
+      { name: 'My Bills', path: '/patient/bills', icon: FiDollarSign },
+      { name: 'Lab Tests', path: '/patient/lab-tests', icon: FiActivity },
+      { name: 'Prescriptions', path: '/patient/prescriptions', icon: FiClipboard },
     ],
     nurse: [
       { name: 'Dashboard', path: '/nurse/dashboard', icon: FiHome },

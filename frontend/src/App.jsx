@@ -35,6 +35,9 @@ import BookAppointmentPage from './pages/patient/BookAppointmentPage';
 import MyAppointments from './pages/patient/MyAppointments';
 import MedicalHistory from './pages/patient/MedicalHistory';
 import PatientBilling from './pages/patient/PatientBilling';
+import MyBills from './pages/patient/MyBills';
+import MyLabTests from './pages/patient/MyLabTests';
+import MyPrescriptions from './pages/patient/MyPrescriptions';
 
 // Nurse Pages
 import AssignedPatients from './pages/nurse/AssignedPatients';
@@ -191,6 +194,30 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['patient']}>
               <PatientBilling />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/patient/bills"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <MyBills />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/patient/lab-tests"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <MyLabTests />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/patient/prescriptions"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <MyPrescriptions />
             </ProtectedRoute>
           }
         />

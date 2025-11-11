@@ -60,6 +60,9 @@ const Login = () => {
     { role: 'Doctor', email: 'dr.sharma@hospital.com', password: 'doctor123' },
     { role: 'Patient', email: 'patient1@email.com', password: 'patient123' },
     { role: 'Nurse', email: 'nurse1@hospital.com', password: 'nurse123' },
+    { role: 'Billing', email: 'billing@hospital.com', password: 'billing123' },
+    { role: 'Lab', email: 'lab@hospital.com', password: 'lab123' },
+    { role: 'Pharmacy', email: 'pharmacy@hospital.com', password: 'pharmacy123' },
   ];
 
   const quickLogin = async (email, password) => {

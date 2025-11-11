@@ -426,3 +426,56 @@ export const getPatientLabTests = asyncHandler(async (req, res) => {
     data: labTests
   });
 });
+
+// @desc    Get patient prescriptions
+// @route   GET /api/patients/prescriptions
+// @access  Private (Patient)
+export const getMyPrescriptions = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id });
+  
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient profile not found'
+    });
+  }
+
+  const prescriptions = await Prescription.find({ patient: patient._id })
+    .populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'firstName lastName' }
+    })
+    .populate('appointment')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: prescriptions.length,
+    data: prescriptions
+  });
+});
+
+// @desc    Get patient bills (alias for getBillingHistory)
+// @route   GET /api/patients/bills
+// @access  Private (Patient)
+export const getMyBills = asyncHandler(async (req, res) => {
+  const patient = await Patient.findOne({ user: req.user._id });
+  
+  if (!patient) {
+    return res.status(404).json({
+      success: false,
+      message: 'Patient profile not found'
+    });
+  }
+
+  const bills = await Billing.find({ patient: patient._id })
+    .populate('appointment')
+    .populate('generatedBy', 'firstName lastName')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: bills.length,
+    data: bills
+  });
+});

@@ -88,10 +88,13 @@ export const searchBills = asyncHandler(async (req, res) => {
   }
 
   const bills = await Billing.find(query)
-    .populate('patient')
+    .populate({
+      path: 'patient',
+      populate: { path: 'user', select: 'firstName lastName email phone' }
+    })
     .populate('generatedBy', 'firstName lastName')
-    .sort({ createdAt: -1 })
-    .limit(50);
+    .populate('appointment')
+    .sort({ createdAt: -1 });
 
   res.status(200).json({
     success: true,
@@ -126,7 +129,7 @@ export const getBillById = asyncHandler(async (req, res) => {
 // @route   POST /api/billing/:id/payment
 // @access  Private (Billing Staff, Admin)
 export const addPayment = asyncHandler(async (req, res) => {
-  const { method, amount, transactionId } = req.body;
+  const { method, amount, transactionId, notes } = req.body;
 
   const bill = await Billing.findById(req.params.id);
 
@@ -144,11 +147,25 @@ export const addPayment = asyncHandler(async (req, res) => {
     });
   }
 
+  // Add to paymentMethods array
   bill.paymentMethods.push({
     method,
     amount,
-    transactionId,
+    transactionId: transactionId || `TXN${Date.now()}`,
     transactionDate: new Date()
+  });
+
+  // Add to paymentHistory array for backward compatibility
+  if (!bill.paymentHistory) {
+    bill.paymentHistory = [];
+  }
+  bill.paymentHistory.push({
+    amount,
+    date: new Date(),
+    method,
+    transactionId: transactionId || `TXN${Date.now()}`,
+    receivedBy: req.user._id,
+    notes
   });
 
   bill.amountPaid += amount;
@@ -156,11 +173,17 @@ export const addPayment = asyncHandler(async (req, res) => {
 
   if (bill.balanceAmount === 0) {
     bill.paymentStatus = 'paid';
-  } else {
+  } else if (bill.amountPaid > 0) {
     bill.paymentStatus = 'partial';
   }
 
   await bill.save();
+
+  // Populate for response
+  await bill.populate({
+    path: 'patient',
+    populate: { path: 'user', select: 'firstName lastName email phone' }
+  });
 
   res.status(200).json({
     success: true,

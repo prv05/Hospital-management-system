@@ -10,7 +10,9 @@ import {
   updateProfile,
   getDepartments,
   getDoctorsByDepartment,
-  getPatientLabTests
+  getPatientLabTests,
+  getMyPrescriptions,
+  getMyBills
 } from '../controllers/patientController.js';
 
 const router = express.Router();
@@ -26,7 +28,9 @@ router.get('/appointments', getMyAppointments);
 router.delete('/appointments/:id', cancelAppointment);
 router.get('/medical-history', getMedicalHistory);
 router.get('/lab-tests', getPatientLabTests);
+router.get('/prescriptions', getMyPrescriptions);
 router.get('/billing', getBillingHistory);
+router.get('/bills', getMyBills);
 router.put('/profile', updateProfile);
 
 export default router;
