@@ -57,6 +57,7 @@ import PharmacyAlerts from './pages/pharmacy/PharmacyAlerts';
 // Lab Pages
 import LabTests from './pages/lab/LabTests';
 import PendingTests from './pages/lab/PendingTests';
+import CompletedTests from './pages/lab/CompletedTests';
 import LabAnalytics from './pages/lab/LabAnalytics';
 
 // Settings Page (shared across all roles)
@@ -372,6 +373,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['lab', 'admin']}>
               <PendingTests />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lab/completed"
+          element={
+            <ProtectedRoute allowedRoles={['lab', 'admin']}>
+              <CompletedTests />
             </ProtectedRoute>
           }
         />

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { 
   FiHome, FiCalendar, FiUsers, FiActivity, FiFileText, 
-  FiPackage, FiDollarSign, FiSettings, FiBell, FiLogOut, FiClipboard 
+  FiPackage, FiDollarSign, FiSettings, FiBell, FiLogOut, FiClipboard, FiCheckCircle 
 } from 'react-icons/fi';
 import useAuthStore from '../store/authStore';
 
@@ -55,6 +55,7 @@ const Sidebar = ({ role }) => {
       { name: 'Dashboard', path: '/lab/dashboard', icon: FiHome },
       { name: 'Test Requests', path: '/lab/tests', icon: FiFileText },
       { name: 'Pending Tests', path: '/lab/pending', icon: FiBell },
+      { name: 'Completed Tests', path: '/lab/completed', icon: FiCheckCircle },
       { name: 'Analytics', path: '/lab/analytics', icon: FiActivity },
     ],
   };

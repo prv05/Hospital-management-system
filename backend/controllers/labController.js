@@ -22,8 +22,20 @@ export const getAllLabTests = asyncHandler(async (req, res) => {
   }
 
   const tests = await LabTest.find(query)
-    .populate('patient')
-    .populate('doctor')
+    .populate({
+      path: 'patient',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email'
+      }
+    })
+    .populate({
+      path: 'doctor',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email'
+      }
+    })
     .populate('technician', 'firstName lastName')
     .sort({ createdAt: -1 });
 
@@ -137,8 +149,20 @@ export const addTestResults = asyncHandler(async (req, res) => {
 // @access  Private
 export const getTestById = asyncHandler(async (req, res) => {
   const test = await LabTest.findById(req.params.id)
-    .populate('patient')
-    .populate('doctor')
+    .populate({
+      path: 'patient',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email'
+      }
+    })
+    .populate({
+      path: 'doctor',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email'
+      }
+    })
     .populate('technician', 'firstName lastName')
     .populate('sampleCollectedBy', 'firstName lastName');
 
@@ -241,8 +265,20 @@ export const getPendingTests = asyncHandler(async (req, res) => {
   const pendingTests = await LabTest.find({
     status: { $in: ['requested', 'sample-collected', 'in-process'] }
   })
-    .populate('patient')
-    .populate('doctor')
+    .populate({
+      path: 'patient',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email'
+      }
+    })
+    .populate({
+      path: 'doctor',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email'
+      }
+    })
     .sort({ urgency: -1, createdAt: 1 });
 
   res.status(200).json({

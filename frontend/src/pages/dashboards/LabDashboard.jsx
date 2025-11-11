@@ -27,7 +27,7 @@ const LabDashboard = () => {
 
   const fetchTests = async () => {
     try {
-      const { data } = await api.get('/api/lab/tests');
+      const { data } = await api.get('/lab/tests');
       const allTests = data.data || [];
       
       setTests(allTests);
@@ -58,7 +58,7 @@ const LabDashboard = () => {
 
   const updateTestStatus = async (testId, status) => {
     try {
-      await api.patch(`/api/lab/tests/${testId}/status`, { status });
+      await api.patch(`/lab/tests/${testId}/status`, { status });
       toast.success('Status updated successfully');
       fetchTests();
     } catch (error) {
@@ -67,7 +67,7 @@ const LabDashboard = () => {
   };
 
   const columns = [
-    { header: 'Test ID', accessor: 'testId', render: (row) => <span className="font-medium text-sky-400">{row.testId}</span> },
+    { header: 'Test ID', accessor: 'testId', render: (row) => <span className="font-medium text-sky-600 dark:text-sky-400">{row.testId}</span> },
     { header: 'Patient', accessor: 'patient', render: (row) => row.patient?.user ? `${row.patient.user.firstName} ${row.patient.user.lastName}` : 'N/A' },
     { header: 'Test Name', accessor: 'testName' },
     { header: 'Category', accessor: 'testCategory' },
@@ -101,12 +101,12 @@ const LabDashboard = () => {
   return (
     <>
       <Navbar />
-      <div className="flex min-h-screen bg-gray-900">
+      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
         <Sidebar role="lab" />
-        <div className="flex-1 ml-64 mt-16">
-          <div className="p-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Lab Dashboard</h1>
-            <p className="text-sky-400 mb-8">Manage laboratory tests and results</p>
+        <div className="flex-1 ml-64 mt-16 overflow-x-hidden">
+          <div className="p-8 max-w-full">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Lab Dashboard</h1>
+            <p className="text-sky-600 dark:text-sky-400 mb-8">Manage laboratory tests and results</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard title="Pending Tests" value={stats.pending} icon={FiClock} color="orange" />
@@ -117,18 +117,15 @@ const LabDashboard = () => {
 
             {loading ? (
               <div className="text-center py-12">
-                <p className="text-gray-400">Loading...</p>
+                <p className="text-gray-600 dark:text-gray-400">Loading...</p>
               </div>
             ) : (
-              <div className="space-y-6">
-                <Card>
-                  <h2 className="text-xl font-semibold mb-4 text-red-600 dark:text-red-400">Pending Tests ({pendingTests.length})</h2>
-                  {pendingTests.length > 0 ? <Table columns={columns} data={pendingTests} /> : <p className="text-gray-500 dark:text-gray-400 text-center py-8">No pending tests</p>}
-                </Card>
-
+              <div className="space-y-6 overflow-hidden">
                 <Card>
                   <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Recent Completed Tests</h2>
-                  {completedTests.length > 0 ? <Table columns={columns} data={completedTests.slice(0, 10)} /> : <p className="text-gray-500 dark:text-gray-400 text-center py-8">No completed tests</p>}
+                  <div className="overflow-x-auto -mx-6 px-6">
+                    {completedTests.length > 0 ? <Table columns={columns} data={completedTests.slice(0, 10)} /> : <p className="text-gray-600 dark:text-gray-400 text-center py-8">No completed tests</p>}
+                  </div>
                 </Card>
               </div>
             )}
@@ -139,11 +136,11 @@ const LabDashboard = () => {
       {/* Update Test Modal */}
       {showUpdateModal && selectedTest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold mb-4 text-sky-400">Complete Test: {selectedTest.testName}</h2>
-            <p className="text-gray-300 mb-4">Add test results to mark as completed</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 border border-gray-200 dark:border-gray-700">
+            <h2 className="text-2xl font-bold mb-4 text-sky-600 dark:text-sky-400">Complete Test: {selectedTest.testName}</h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-4">Add test results to mark as completed</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowUpdateModal(false); setSelectedTest(null); }} className="px-4 py-2 border border-gray-600 rounded-lg hover:bg-gray-700 text-gray-300 transition-colors duration-200">
+              <button onClick={() => { setShowUpdateModal(false); setSelectedTest(null); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors duration-200">
                 Cancel
               </button>
               <button onClick={async () => {
