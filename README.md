@@ -407,6 +407,6 @@ Built with ❤️ by the development team
 
 ## 📞 Support
 
-For support, email support@healthcare.com or create an issue in the repository.
+For support, email prathamvernekar05@gmail.com  or create an issue in the repository.
 
 ## 🌟 Star this repository if you find it helpful!
