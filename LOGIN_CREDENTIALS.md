@@ -170,4 +170,4 @@ If you encounter any issues:
 
 ---
 
-**Last Updated:** November 12, 2025
+**Last Updated:** february 10, 2026
